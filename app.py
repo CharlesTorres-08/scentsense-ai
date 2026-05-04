@@ -6,7 +6,7 @@ import time
 
 # --- 1. CONFIGURATION ---
 # Replace these with your actual keys
-GEMINI_KEY = "AIzaSyDXUKGDJTg0ToxhZ4R43zCts26weRlBR_0"
+GEMINI_KEY = "AIzaSyDeSdSpw_TziZSjv2o9Q2-mtbGTHp-Gpb4"
 WEATHER_KEY = "0be015512b85b38a0369449f9a143c99"
 
 # Initialize the Gemini Client
