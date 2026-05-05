@@ -38,7 +38,7 @@ st.set_page_config(
     page_title="ScentSense AI",
     page_icon="🧴",
     menu_items={
-        'Get Help': 'https://github.com/your-username/your-repo',
+        'Get Help': 'https://github.com/CharlesTorres-08/scentsense-ai',
         'About': "# ScentSense AI\nThis agent recommends perfumes based on your local weather!"
     }
 )
