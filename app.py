@@ -34,7 +34,12 @@ def get_weather(city):
         return None, str(e)
 
 # 4. APP UI
-st.set_page_config(page_title="ScentSense AI", page_icon="🧴")
+st.set_page_config(
+    page_title="ScentSense AI: A Context-Aware Fragrance Selection Agent",
+    page_icon="🧴",
+    layout="centered",
+    initial_sidebar_state="collapsed"
+)
 
 st.title("🧴 ScentSense AI")
 st.caption("A Context-Aware Fragrance Selection Agent")
