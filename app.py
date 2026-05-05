@@ -70,17 +70,19 @@ if st.button("🚀 Find My Scent", use_container_width=True):
                         image_parts.append(types.Part.from_bytes(data=bytes_data, mime_type=uploaded_file.type))
                     
                     # Step C: The Agent's Logic
-                    prompt = f"""
-                    Current Weather in {city}: {temp}°C, {desc}.
-                    
-                    Identify the perfumes in these photos. 
-                    Based on the current temperature of {temp}°C, recommend the best one to wear.
-                    
-                    Format your response clearly:
-                    - **The Daily Pick:** [Name]
-                    - **Scent Profile:** [Top notes]
-                    - **Reasoning:** [Why it fits the current weather]
-                    """
+                   prompt = f"""
+Current Weather in {city}: {temp}°C, {desc}.
+
+- Identify the perfumes in these photos by reading the labels.
+- If the notes are NOT visible on the bottle, use your internal knowledge of the brand/scent to infer its profile.
+- If the brand is unknown, infer the scent type based on its name (e.g., 'Fresh' usually means citrus/aquatic).
+- Recommend the best one for {temp}°C weather.
+
+Format:
+- **Detected:** [Name]
+- **Estimated Profile:** [Notes you think it has]
+- **Recommendation:** [Why this one?]
+"""
                     
                     response = client.models.generate_content(
                         model="gemini-2.5-flash",
