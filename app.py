@@ -85,7 +85,7 @@ if st.button("🚀 Find My Scent", use_container_width=True):
                     """
                     
                     response = client.models.generate_content(
-                        model="gemini-2.0-flash",
+                        model="gemini-2.5-flash",
                         contents=image_parts + [prompt]
                     )
                     
