@@ -16,10 +16,42 @@ if not GEMINI_KEY or not WEATHER_KEY:
     st.error("🚨 API Keys are missing! Check your .env file or Streamlit Secrets.")
     st.stop()
 
-# Initialize the Gemini Client
+# Initialize the Gemini Client with Google Search capability
 client = genai.Client(api_key=GEMINI_KEY)
 
-# 3. WEATHER TOOL
+# 3. LOCAL BRAND KNOWLEDGE BASE
+PH_SCENT_MAP = {
+    # Cotidiano Fragrance
+    "Cotidiano - Silver": "Gentle Fluidity Silver (Fresh, Metallic, Gin)",
+    "Cotidiano - Mango Venom": "God of Fire (Mango, Tropical, Sweet)",
+    "Cotidiano - D'Iconic": "Bleu de Chanel (Clean, Citrus, Shower-gel)",
+    "Cotidiano - Daily Dose": "Fresh, Clean, Daily wear",
+
+    # Symmetry Labs
+    "Symmetry Labs - Stellar": "LV L'Immensite (Citrus, Ginger, Aquatic)",
+    "Symmetry Labs - Diver": "LV Afternoon Swim (Mandarin, Orange, Bright)",
+    "Symmetry Labs - Radiant": "LV Tygar (Grapefruit, Ambroxan, Woody)",
+    "Symmetry Labs - Elixer": "Dior Sauvage Elixir (Spicy, Licorice, Lavender)",
+
+    # Father and Son
+    "Father and Son - Achilles": "PDM Percival (Fresh, Aromatic, Versatile)",
+    "Father and Son - Debonair": "JPG Le Male Elixir (Sweet, Honey, Tobacco)",
+    "Father and Son - Kingsman": "Terre d'Hermes (Orange, Flint, Earthy)",
+    "Father and Son - Enigma": "Stronger With You Intensely (Warm, Nutty, Sweet)",
+
+    # HSI Motivational & Others
+    "HSI - Motivational": "Fresh, Uplifting, Green (Signature)",
+    "HSI - Success": "Invictus (Bubblegum, Aquatic, Fresh)",
+    "D'Matteos - No. 1": "Prada L'Homme (Soapy, Iris, Clean)",
+    "Prime Monkeys - Poseidon": "Fresh, Citrus, Mint",
+    
+    # Generic Brand Hints
+    "Ian Darcy": "High-quality oil-based designer inspirations.",
+    "Enzo Scents": "High-concentration local perfume inspired by designer brands.",
+    "Jem Perfumery": "Artisan local fragrance house specializing in Extraits."
+}
+
+# 4. WEATHER TOOL
 def get_weather(city):
     """Fetches real-time weather from OpenWeatherMap"""
     url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_KEY}&units=metric"
@@ -33,7 +65,7 @@ def get_weather(city):
     except Exception as e:
         return None, str(e)
 
-# 4. APP UI
+# 5. APP UI
 st.set_page_config(
     page_title="ScentSense AI",
     page_icon="🧴",
@@ -44,7 +76,7 @@ st.set_page_config(
 )
 
 st.title("🧴 ScentSense AI")
-st.caption("A Context-Aware Fragrance Selection Agent")
+st.caption("A Context-Aware Fragrance Selection Agent for PH Local Brands")
 st.markdown("---")
 
 # User Inputs
@@ -56,37 +88,40 @@ if st.button("🚀 Find My Scent", use_container_width=True):
         st.warning("Please provide both your city and at least one perfume photo!")
     else:
         with st.spinner("Agent is checking the weather and analyzing your shelf..."):
-            # Step A: Get Weather
             temp, desc = get_weather(city)
             
             if temp is None:
                 st.error(f"Weather Error: {desc}")
             else:
                 try:
-                    # Step B: Prepare Images for AI
                     image_parts = []
                     for uploaded_file in uploaded_files:
                         bytes_data = uploaded_file.getvalue()
                         image_parts.append(types.Part.from_bytes(data=bytes_data, mime_type=uploaded_file.type))
                     
-                    # Step C: The Agent's Logic (Indentation Fixed)
+                    # Enhanced Prompt with Knowledge Base
                     prompt = f"""
                     Current Weather in {city}: {temp}°C, {desc}.
 
-                    - Identify the perfumes in these photos by reading the labels. Focus on local brands.
-                    - If the notes are NOT visible on the bottle, use your internal knowledge of the brand/scent to infer its profile.
-                    - If the brand is unknown, infer the scent type based on its name (e.g., 'Fresh' usually means citrus/aquatic).
-                    - Recommend the best one for {temp}°C weather.
+                    You are a Philippine Fragrance Expert. Follow these steps:
+                    1. Identify the perfumes in these photos by reading the labels. 
+                    2. Check this local brand dictionary first: {PH_SCENT_MAP}
+                    3. If the brand/scent isn't in the dictionary, USE GOOGLE SEARCH to find the "inspired by" notes or scent profile from TikTok Shop or Shopee listings.
+                    4. Recommend the best one for {temp}°C weather.
 
                     Format:
                     - **Detected:** [Name]
-                    - **Estimated Profile:** [Notes you think it has]
-                    - **Recommendation:** [Why this one?]
+                    - **Scent Profile:** [Notes or 'Inspired by' info]
+                    - **Reasoning:** [Why it fits this weather]
                     """
                     
+                    # Generate content with Google Search Grounding enabled
                     response = client.models.generate_content(
-                        model="gemini-2.5-flash",
-                        contents=image_parts + [prompt]
+                        model="gemini-2.0-flash",
+                        contents=image_parts + [prompt],
+                        config=types.GenerateContentConfig(
+                            tools=[types.Tool(google_search=types.GoogleSearchRetrieval())]
+                        )
                     )
                     
                     st.success(f"Weather in {city}: {temp}°C, {desc.capitalize()}")
