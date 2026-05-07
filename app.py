@@ -70,7 +70,7 @@ def get_weather(city):
 st.set_page_config(page_title="ScentSense AI", page_icon="🏺")
 set_bg_from_url()
 
-st.title("🏺 ScentSense AI")
+st.title("🧴 ScentSense AI")
 st.caption("A Context-Aware Fragrance Selection Agent")
 st.markdown("---")
 
