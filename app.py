@@ -6,54 +6,55 @@ from google import genai
 from google.genai import types
 
 # 1. LOAD CONFIGURATION
-load_dotenv()  # This looks for your .env file locally
+load_dotenv()
 
 GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 WEATHER_KEY = os.getenv("WEATHER_API_KEY")
 
-# 2. VALIDATION CHECK
 if not GEMINI_KEY or not WEATHER_KEY:
     st.error("🚨 API Keys are missing! Check your .env file or Streamlit Secrets.")
     st.stop()
 
-# Initialize the Gemini Client with Google Search capability
+# Initialize Gemini Client
 client = genai.Client(api_key=GEMINI_KEY)
 
-# 3. LOCAL BRAND KNOWLEDGE BASE
+# 2. LOCAL BRAND KNOWLEDGE BASE
 PH_SCENT_MAP = {
-    # Cotidiano Fragrance
     "Cotidiano - Silver": "Gentle Fluidity Silver (Fresh, Metallic, Gin)",
     "Cotidiano - Mango Venom": "God of Fire (Mango, Tropical, Sweet)",
     "Cotidiano - D'Iconic": "Bleu de Chanel (Clean, Citrus, Shower-gel)",
-    "Cotidiano - Daily Dose": "Fresh, Clean, Daily wear",
-
-    # Symmetry Labs
     "Symmetry Labs - Stellar": "LV L'Immensite (Citrus, Ginger, Aquatic)",
     "Symmetry Labs - Diver": "LV Afternoon Swim (Mandarin, Orange, Bright)",
-    "Symmetry Labs - Radiant": "LV Tygar (Grapefruit, Ambroxan, Woody)",
-    "Symmetry Labs - Elixer": "Dior Sauvage Elixir (Spicy, Licorice, Lavender)",
-
-    # Father and Son
     "Father and Son - Achilles": "PDM Percival (Fresh, Aromatic, Versatile)",
     "Father and Son - Debonair": "JPG Le Male Elixir (Sweet, Honey, Tobacco)",
-    "Father and Son - Kingsman": "Terre d'Hermes (Orange, Flint, Earthy)",
-    "Father and Son - Enigma": "Stronger With You Intensely (Warm, Nutty, Sweet)",
-
-    # HSI Motivational & Others
-    "HSI - Motivational": "Fresh, Uplifting, Green (Signature)",
-    "HSI - Success": "Invictus (Bubblegum, Aquatic, Fresh)",
-    "D'Matteos - No. 1": "Prada L'Homme (Soapy, Iris, Clean)",
-    "Prime Monkeys - Poseidon": "Fresh, Citrus, Mint",
-    
-    # Generic Brand Hints
-    "Ian Darcy": "High-quality oil-based designer inspirations.",
-    "Enzo Scents": "High-concentration local perfume inspired by designer brands.",
-    "Jem Perfumery": "Artisan local fragrance house specializing in Extraits."
+    "HSI - Motivational": "Fresh, Uplifting, Green (Signature Blend)",
+    "Prime Monkeys - Poseidon": "Fresh, Citrus, Mint (The Summer King)",
 }
+
+# 3. BACKGROUND FUNCTION (Pinterest URL)
+def set_bg_from_url():
+    st.markdown(
+        f"""
+        <style>
+        .stApp {{
+            background-image: url("https://i.pinimg.com/736x/2c/09/04/2c0904aed6688401670f8921b29af288.jpg");
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }}
+        /* Make text more readable against the image */
+        .stMarkdown, .stTextInput, .stCaption {{
+            background-color: rgba(255, 255, 255, 0.4);
+            padding: 10px;
+            border-radius: 10px;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
 
 # 4. WEATHER TOOL
 def get_weather(city):
-    """Fetches real-time weather from OpenWeatherMap"""
     url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_KEY}&units=metric"
     try:
         response = requests.get(url)
@@ -66,20 +67,13 @@ def get_weather(city):
         return None, str(e)
 
 # 5. APP UI
-st.set_page_config(
-    page_title="ScentSense AI",
-    page_icon="🧴",
-    menu_items={
-        'Get Help': 'https://github.com/CharlesTorres-08/scentsense-ai',
-        'About': "# ScentSense AI\nThis agent recommends perfumes based on your local weather!"
-    }
-)
+st.set_page_config(page_title="ScentSense AI", page_icon="🏺")
+set_bg_from_url()
 
-st.title("🧴 ScentSense AI")
-st.caption("A Context-Aware Fragrance Selection Agent for PH Local Brands")
+st.title("🏺 ScentSense AI")
+st.caption("A Context-Aware Fragrance Selection Agent")
 st.markdown("---")
 
-# User Inputs
 city = st.text_input("📍 Where are you right now?", placeholder="e.g., Lipa City, PH")
 uploaded_files = st.file_uploader("📸 Upload photos of your perfumes", type=["jpg", "png", "jpeg"], accept_multiple_files=True)
 
@@ -87,9 +81,8 @@ if st.button("🚀 Find My Scent", use_container_width=True):
     if not uploaded_files or not city:
         st.warning("Please provide both your city and at least one perfume photo!")
     else:
-        with st.spinner("Agent is checking the weather and analyzing your shelf..."):
+        with st.spinner("Analyzing your shelf..."):
             temp, desc = get_weather(city)
-            
             if temp is None:
                 st.error(f"Weather Error: {desc}")
             else:
@@ -98,26 +91,24 @@ if st.button("🚀 Find My Scent", use_container_width=True):
                     for uploaded_file in uploaded_files:
                         bytes_data = uploaded_file.getvalue()
                         image_parts.append(types.Part.from_bytes(data=bytes_data, mime_type=uploaded_file.type))
-                    
-                    # Enhanced Prompt with Knowledge Base
+
+                    # Logic prompt
                     prompt = f"""
                     Current Weather in {city}: {temp}°C, {desc}.
+                    Local Scent Map: {PH_SCENT_MAP}
 
-                    You are a Philippine Fragrance Expert. Follow these steps:
-                    1. Identify the perfumes in these photos by reading the labels. 
-                    2. Check this local brand dictionary first: {PH_SCENT_MAP}
-                    3. If the brand/scent isn't in the dictionary, USE GOOGLE SEARCH to find the "inspired by" notes or scent profile from TikTok Shop or Shopee listings.
-                    4. Recommend the best one for {temp}°C weather.
+                    1. Identify the perfumes. For PH local brands, use the Map above.
+                    2. If a brand isn't in the Map, USE GOOGLE SEARCH to find notes from TikTok or Shopee.
+                    3. Recommend the best one for {temp}°C weather.
 
                     Format:
                     - **Detected:** [Name]
-                    - **Scent Profile:** [Notes or 'Inspired by' info]
-                    - **Reasoning:** [Why it fits this weather]
+                    - **Scent Profile:** [Notes]
+                    - **Recommendation:** [Why it fits today]
                     """
-                    
-                    # Generate content with Google Search Grounding enabled
+
                     response = client.models.generate_content(
-                        model="gemini-2.5-flash-lite",
+                        model="gemini-2.0-flash",
                         contents=image_parts + [prompt],
                         config=types.GenerateContentConfig(
                             tools=[types.Tool(google_search=types.GoogleSearchRetrieval())]
@@ -128,11 +119,6 @@ if st.button("🚀 Find My Scent", use_container_width=True):
                     st.markdown(response.text)
                 
                 except Exception as e:
-                    if "429" in str(e):
-                        st.error("🚦 Rate limit reached. Please wait 1 minute.")
-                    elif "403" in str(e):
-                        st.error("🔑 Permission Denied: Your API key might be leaked or invalid.")
-                    else:
-                        st.error(f"An error occurred: {e}")
+                    st.error(f"An error occurred: {e}")
 
 st.info("💡 Tip: Clear labels help the AI identify your collection faster.")
