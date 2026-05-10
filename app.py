@@ -70,12 +70,22 @@ def get_weather(city):
         return None, str(e)
 
 # 5. APP UI
-st.set_page_config(page_title="ScentSense AI", page_icon="🏺")
+st.set_page_config(
+    page_title="ScentSense AI",
+    page_icon=":material/air:" # Looks like a spray bottle
+)
 set_bg_from_url()
 
-st.title("🧴 ScentSense AI")
+st.title(":material/air: ScentSense AI")
 st.caption("A Context-Aware Fragrance Selection Agent")
-st.markdown("---")
+st.markdown(
+    """
+    <h1 style='color: white; text-shadow: 0px 0px 15px rgba(255,255,255,0.8);'>
+        :material/sanitizer: ScentSense AI
+    </h1>
+    """, 
+    unsafe_allow_html=True
+)
 
 city = st.text_input("📍 Where are you right now?", placeholder="e.g., Lipa City, PH")
 uploaded_files = st.file_uploader("📸 Upload photos of your perfumes", type=["jpg", "png", "jpeg"], accept_multiple_files=True)
