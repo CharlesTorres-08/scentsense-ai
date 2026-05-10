@@ -76,7 +76,7 @@ st.set_page_config(
 )
 set_bg_from_url()
 
-st.title(":material/air: ScentSense AI")
+st.title("ScentSense AI")
 st.caption("A Context-Aware Fragrance Selection Agent")
 st.markdown(
     """
