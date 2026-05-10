@@ -76,12 +76,12 @@ st.set_page_config(
 )
 set_bg_from_url()
 
-st.title("ScentSense AI")
+st.title(":material/air: ScentSense AI")
 st.caption("A Context-Aware Fragrance Selection Agent")
 st.markdown(
     """
     <h1 style='color: white; text-shadow: 0px 0px 15px rgba(255,255,255,0.8);'>
-        :material/sanitizer: ScentSense AI
+        ScentSense AI
     </h1>
     """, 
     unsafe_allow_html=True
