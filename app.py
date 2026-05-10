@@ -31,7 +31,9 @@ PH_SCENT_MAP = {
     "Prime Monkeys - Poseidon": "LV Pacific Chill",
     "Elite Fragrances - Azure": "Bleu De Chanel EDP",
     "Fragrance World - Suits" : "YSL Tuxedo",
-    "AHMED - KAAF" : "PDM Percival"
+    "AHMED - KAAF" : "PDM Percival",
+    "Enzo Scents - BIRI" : "Valentino Born in Roma Intense",
+    "Enzo Scents - Blue Talisman" : "Ex Nihilo Blue Talisman"
 }
 
 # 3. BACKGROUND FUNCTION (Pinterest URL)
