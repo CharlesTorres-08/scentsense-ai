@@ -27,13 +27,13 @@ PH_SCENT_MAP = {
     "Symmetry Labs - Diver": "LV Afternoon Swim (Mandarin, Orange, Bright)",
     "Father and Son - Achilles": "Stronger with You Intensely",
     "Father and Son - Debonair": "JPG Le Male Elixir (Sweet, Honey, Tobacco)",
-    "HSI - Motivational": "Fresh, Uplifting, Green (Signature Blend)",
     "Prime Monkeys - Poseidon": "LV Pacific Chill",
     "Elite Fragrances - Azure": "Bleu De Chanel EDP",
     "Fragrance World - Suits" : "YSL Tuxedo",
     "AHMED - KAAF" : "PDM Percival",
     "Enzo Scents - BIRI" : "Valentino Born in Roma Intense",
-    "Enzo Scents - Blue Talisman" : "Ex Nihilo Blue Talisman"
+    "Enzo Scents - Blue Talisman" : "Ex Nihilo Blue Talisman",
+    "D'Matteos - DREAMCHASER" : "LV Imagination"
 }
 
 # 3. BACKGROUND FUNCTION (Pinterest URL)
