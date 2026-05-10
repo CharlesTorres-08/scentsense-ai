@@ -22,13 +22,16 @@ client = genai.Client(api_key=GEMINI_KEY)
 PH_SCENT_MAP = {
     "Cotidiano - Silver": "Gentle Fluidity Silver (Fresh, Metallic, Gin)",
     "Cotidiano - Mango Venom": "God of Fire (Mango, Tropical, Sweet)",
-    "Cotidiano - D'Iconic": "Bleu de Chanel (Clean, Citrus, Shower-gel)",
-    "Symmetry Labs - Stellar": "LV L'Immensite (Citrus, Ginger, Aquatic)",
+    "Cotidiano - D'Iconic": "Bleu de Chanel EDP",
+    "Symmetry Labs - Sronger Flame": "Stronger with You Intensely",
     "Symmetry Labs - Diver": "LV Afternoon Swim (Mandarin, Orange, Bright)",
-    "Father and Son - Achilles": "PDM Percival (Fresh, Aromatic, Versatile)",
+    "Father and Son - Achilles": "Stronger with You Intensely",
     "Father and Son - Debonair": "JPG Le Male Elixir (Sweet, Honey, Tobacco)",
     "HSI - Motivational": "Fresh, Uplifting, Green (Signature Blend)",
-    "Prime Monkeys - Poseidon": "Fresh, Citrus, Mint (The Summer King)",
+    "Prime Monkeys - Poseidon": "LV Pacific Chill",
+    "Elite Fragrances - Azure": "Bleu De Chanel EDP",
+    "Fragrance World - Suits" : "YSL Tuxedo",
+    "AHMED - KAAF" : "PDM Percival"
 }
 
 # 3. BACKGROUND FUNCTION (Pinterest URL)
