@@ -1,6 +1,7 @@
 import streamlit as st
 import os
 import requests
+from datetime import datetime
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
@@ -17,6 +18,10 @@ if not GEMINI_KEY or not WEATHER_KEY:
 
 # Initialize Gemini Client
 client = genai.Client(api_key=GEMINI_KEY)
+
+# Initialize Session State Memory for History
+if "scent_history" not in st.session_state:
+    st.session_state.scent_history = []
 
 # 2. LOCAL BRAND KNOWLEDGE BASE
 PH_SCENT_MAP = {
@@ -41,7 +46,6 @@ def set_bg_from_url():
     st.markdown(
         f"""
         <style>
-        /* Base page background configuration */
         .stApp {{
             background-image: url("https://i.pinimg.com/736x/2c/09/04/2c0904aed6688401670f8921b29af288.jpg");
             background-size: cover;
@@ -49,10 +53,8 @@ def set_bg_from_url():
             background-attachment: fixed;
         }}
         
-        /* FROSTED DARK GLASS CARD SHIELDS
-           Forces containers into dark glass so all native light text pops perfectly 
-        */
-        .stMarkdown, .stTextInput, .stCaption, .stExpander, div[data-testid="stFileUploader"], .stAlert {{
+        /* Frosted Dark Glass Cards */
+        .stMarkdown, .stTextInput, .stSelectbox, .stCaption, .stExpander, div[data-testid="stFileUploader"], .stAlert {{
             background-color: rgba(20, 20, 25, 0.75) !important;
             backdrop-filter: blur(10px);
             padding: 14px;
@@ -61,14 +63,14 @@ def set_bg_from_url():
             border: 1px solid rgba(255, 255, 255, 0.1) !important;
         }}
         
-        /* Explicitly guarantee primary header labels are a crisp white */
+        /* Form Labels & Typography */
         div[data-testid="stWidgetLabel"] p, .stApp label p {{
             color: #FFFFFF !important;
             font-weight: 600 !important;
-            text-shadow: 0px 2px 4px rgba(0,0,0,0.5);
+            text-shadow: 0px 2px 4px rgba(0,0,0,0.4);
         }}
         
-        /* Smooth styling integration for the action button */
+        /* Action Button Styling */
         .stButton button {{
             background-color: #1E1E24 !important;
             color: #FFFFFF !important;
@@ -81,12 +83,21 @@ def set_bg_from_url():
             box-shadow: 0px 0px 12px rgba(255,255,255,0.2);
         }}
         
-        /* Dropdown content block customization */
+        /* Dropdown interior fix */
         div[data-testid="stExpanderDetails"] {{
             background-color: rgba(30, 30, 35, 0.9) !important;
             border-radius: 8px;
             padding: 15px;
             color: #F0F0F0 !important;
+        }}
+        
+        /* Sidebar Styling Override */
+        section[data-testid="stSidebar"] {{
+            background-color: rgba(15, 15, 20, 0.95) !important;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+        }}
+        section[data-testid="stSidebar"] * {{
+            color: #FFFFFF !important;
         }}
         </style>
         """,
@@ -113,7 +124,27 @@ st.set_page_config(
 )
 set_bg_from_url()
 
-# Custom Header Section matching the luxury dark aesthetic
+# --- SIDEBAR: RECENT HISTORY ---
+with st.sidebar:
+    st.markdown("### 📜 Scent History")
+    st.caption("Your saved and recommended picks:")
+    
+    if not st.session_state.scent_history:
+        st.info("No recommendations saved yet. Run the scanner to start your log!")
+    else:
+        # Loop through saved history in reverse (latest first)
+        for idx, item in enumerate(reversed(st.session_state.scent_history)):
+            with st.container():
+                st.markdown(f"**🌟 {item['perfume']}**")
+                st.caption(f"📅 {item['date']} | 🏢 {item['occasion']}")
+                st.markdown(f"*{item['verdict']}*")
+                st.markdown("---")
+        
+        if st.button("🗑️ Clear History", use_container_width=True):
+            st.session_state.scent_history = []
+            st.rerun()
+
+# --- MAIN PAGE CONTENT ---
 st.markdown(
     """
     <div style='background-color: rgba(15, 15, 20, 0.8); backdrop-filter: blur(10px); padding: 22px; border-radius: 12px; margin-bottom: 25px; border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0px 4px 15px rgba(0,0,0,0.3);'>
@@ -124,7 +155,15 @@ st.markdown(
     unsafe_allow_html=True
 )
 
+# Input Rows
 city = st.text_input("📍 Where are you right now?", placeholder="e.g., Lipa City, PH")
+
+# NEW: Category Filters for Occasions
+occasion = st.selectbox(
+    "🎯 What is the occasion/vibe for today?",
+    ["Casual / Daily Wear", "Office / School / Professional", "Date Night / Romantic", "Gym / Sports / Activewear", "Formal Event / Wedding"]
+)
+
 uploaded_files = st.file_uploader("📸 Upload photos of your perfumes", type=["jpg", "png", "jpeg"], accept_multiple_files=True)
 
 if st.button("🚀 Find My Scent", use_container_width=True):
@@ -142,19 +181,23 @@ if st.button("🚀 Find My Scent", use_container_width=True):
                         bytes_data = uploaded_file.getvalue()
                         image_parts.append(types.Part.from_bytes(data=bytes_data, mime_type=uploaded_file.type))
 
+                    # Updated Gemini Prompt incorporating the chosen Occasion/Category context
                     prompt = f"""
                     Current Weather in {city}: {temp}°C, {desc}.
+                    Target Occasion/Vibe: {occasion}.
                     Local Scent Map: {PH_SCENT_MAP}
 
                     Analyze the uploaded perfume bottles. Identify all of them.
                     For PH local brands, reference the Map. Use Google Search grounding to verify notes.
 
+                    Evaluate each perfume. A 'GOOD CHOICE' must fit BOTH the {temp}°C weather AND the '{occasion}' setting.
+                    
                     For EVERY perfume bottle detected, you must output its details exactly using this block format:
                     ---PERFUME---
                     NAME: [Perfume Name]
                     VERDICT: [GOOD CHOICE or NOT RECOMMENDED]
                     PROFILE: [Scent notes or what it is inspired by]
-                    REASON: [Short explanation why it fits or doesn't fit {temp}°C weather]
+                    REASON: [Short explanation factoring in the weather AND the '{occasion}' filter]
                     ---END---
                     """
 
@@ -167,7 +210,6 @@ if st.button("🚀 Find My Scent", use_container_width=True):
                     )
                     
                     st.success(f"Weather in {city}: {temp}°C, {desc.capitalize()}")
-                    
                     st.markdown(f"<h3 style='color: #FFFFFF; margin-top: 20px; font-weight: 700; text-shadow: 0px 2px 4px rgba(0,0,0,0.4);'>🔮 Your Fragrance Analysis Breakdown</h3>", unsafe_allow_html=True)
                     
                     # 6. LAYOUT BREAKDOWN PARSER
@@ -193,14 +235,30 @@ if st.button("🚀 Find My Scent", use_container_width=True):
                             
                             status_badge = "🟢" if "GOOD" in verdict.upper() else "🚨"
                             
+                            # Render separate dropdown blocks
                             with st.expander(f"{status_badge} {name} — {verdict}"):
                                 st.write(f"**Scent Profile:** {profile}")
-                                st.write(f"**Weather Assessment:** {reason}")
-                                
+                                st.write(f"**Weather & Vibe Assessment:** {reason}")
+                            
+                            # AUTOMATICALLY APPEND "GOOD CHOICE" PICKS TO HISTORY SIDEBAR
+                            if "GOOD" in verdict.upper():
+                                timestamp = datetime.now().strftime("%b %d, %h:%m %p")
+                                # Avoid duplicating the exact same recommendation in the current session feed
+                                if not any(h['perfume'] == name and h['occasion'] == occasion for h in st.session_state.scent_history):
+                                    st.session_state.scent_history.append({
+                                        "perfume": name,
+                                        "date": timestamp,
+                                        "occasion": occasion,
+                                        "verdict": reason
+                                    })
+                    
                     if not detected_any:
                         st.markdown(raw_text)
+                    else:
+                        # Rerun the page context once to safely draw new entries into the sidebar live
+                        st.rerun()
                             
                 except Exception as e:
                     st.error(f"An error occurred while building the layout: {e}")
 
-st.info("💡 Tip: Clear labels help the AI separate your collection into clean blocks faster.")
+st.info("💡 Tip: Selecting the exact occasion helps Gemini pick the perfect compliment magnet for your vibe.")
