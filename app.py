@@ -43,7 +43,7 @@ def get_base64_image(image_path):
 jpg_base64 = get_base64_image("jpg_elixir.png")
 bdc_base64 = get_base64_image("bdc.png")
 
-# 2. LOCAL BRAND KNOWLEDGE BASE
+# 2. LOCAL BRAND KNOWLEDGE BASE (Primary reference lang ito ngayon)
 PH_SCENT_MAP = {
     "Cotidiano - Silver": "Gentle Fluidity Silver (Fresh, Metallic, Gin)",
     "Cotidiano - Mango Venom": "God of Fire (Mango, Tropical, Sweet)",
@@ -63,12 +63,12 @@ PH_SCENT_MAP = {
 
 # 3. STRUCTURED DATA SCHEMAS FOR GEMINI (Pydantic Engine)
 class PerfumeAnalysis(BaseModel):
-    name: str = Field(description="The full brand and scent name of the identified bottle.")
-    inspired_by: str = Field(description="The original luxury designer perfume this clone is inspired by based on the dictionary. Example: 'JPG Le Male Elixir'. If original designer, write 'Original Release'.")
-    notes: str = Field(description="Detailed breakdown of Top Notes, Heart Notes, and Base Notes for the scent profile.")
+    name: str = Field(description="The full brand and scent name of the identified bottle from the image.")
+    inspired_by: str = Field(description="If the perfume is in the provided dictionary, use that. IF IT IS NOT IN THE DICTIONARY, use your own global knowledge base to identify what luxury/designer perfume this local clone is inspired by (e.g., 'Bvlgari Tygar', 'Montale Chocolate Greedy'). Do not leave it blank.")
+    notes: str = Field(description="Comprehensive breakdown of Top Notes, Heart/Middle Notes, and Base Notes for the identified perfume. Never say unknown.")
     verdict: str = Field(description="Strictly write either 'GOOD CHOICE' or 'NOT RECOMMENDED'.")
-    profile: str = Field(description="Summary of the scent's character, vibe, and longevity.")
-    reason: str = Field(description="Contextual explanation on why it fits or conflicts with the current weather temperature and occasion.")
+    profile: str = Field(description="The main scent classification or character (e.g., Oriental Vanilla, Citrus Woody).")
+    reason: str = Field(description="Contextual explanation on why it fits or conflicts with the current weather temperature and occasion vibe.")
 
 class FragranceResponse(BaseModel):
     perfumes: List[PerfumeAnalysis]
@@ -208,21 +208,22 @@ with main_col:
                     try:
                         image_parts = [types.Part.from_bytes(data=f.getvalue(), mime_type=f.type) for f in uploaded_files]
                         
+                        # Ginawa nating Hybrid ang prompt: Titingin sa map pero pwedeng gumamit ng sariling utak kapag wala roon!
                         system_instruction = f"""
-                        You are an expert fragrance sommelier agent. Your core job is to inspect the uploaded perfume bottle images and cross-reference them with the local brand dictionary.
+                        You are an expert fragrance sommelier agent. Your core job is to inspect the uploaded perfume bottle images and extract their details.
                         
-                        LOCAL BRAND INSPIRED-BY DICTIONARY:
+                        PRIMARY PH SCENT DICTIONARY:
                         {PH_SCENT_MAP}
 
-                        MANDATORY INSTRUCTIONS:
-                        1. Identify the perfume brand and bottle line name from the image.
-                        2. If the bottle matches a clone brand listed in the dictionary above (e.g., Cotidiano, Symmetry Labs, Father and Son, Enzo Scents, D'Matteos), you MUST look up its matching luxury inspiration from the dictionary and save it in the 'inspired_by' field.
-                        3. Based on that identified luxury fragrance, extract or recall its specific Top, Middle, and Base perfume notes and fill out the 'notes' field comprehensively.
-                        4. Determine if the perfume is appropriate for {temp}°C weather conditions and a '{occasion}' vibe.
+                        HYBRID IDENTIFICATION RULES:
+                        1. Look at the image and read the label name (e.g., 'Cotidiano - Choco Carnival' or 'Cotidiano - Tiger Eye').
+                        2. Cross-reference with the PRIMARY PH SCENT DICTIONARY first. 
+                        3. CRITICAL: If the perfume name is NOT in the dictionary, DO NOT give up and DO NOT write 'Original Release'. Instead, use your vast internal knowledge of the perfume world to identify what luxury designer fragrance that specific bottle clone is inspired by (e.g., 'Cotidiano Tiger Eye' is inspired by 'Bvlgari Tygar', 'Cotidiano Choco Carnival' is inspired by 'Montale Chocolate Greedy' or 'Akro Awake').
+                        4. Based on that luxury inspiration, populate the 'inspired_by' field and provide its real Top, Middle, and Base notes inside the 'notes' field.
+                        5. Evaluate if it's a good selection for a {temp}°C environment and a '{occasion}' vibe.
                         """
 
-                        # Dito natin binago ang prompt para maging sapilitan ang pagkuha ng notes at luxury map!
-                        execution_prompt = f"Identify and extract all details for the uploaded perfumes. Cross-reference with the dictionary. The current weather condition is {temp}°C ({desc}) and the target lifestyle occasion is '{occasion}'."
+                        execution_prompt = f"Analyze the uploaded images. Identify the exact clone fragrances and map them to their inspirations using the dictionary or your global knowledge base. Current weather is {temp}°C and the occasion is '{occasion}'."
 
                         response = client.models.generate_content(
                             model="gemini-2.5-flash-lite",
@@ -231,7 +232,7 @@ with main_col:
                                 system_instruction=system_instruction,
                                 response_mime_type="application/json",
                                 response_schema=FragranceResponse,
-                                temperature=0.2
+                                temperature=0.1
                             )
                         )
                         
@@ -265,189 +266,197 @@ with main_col:
                 st.markdown(f"📊 **Weather Assessment:**\n{p['reason']}")
 
 with perfume_col:
-    # --- PHOTOREALISTIC BASE64 LOCAL VAULT FRAME WITH AUDIO ENGINE ---
-    html_code = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <style>
-        body {{
-            background-color: transparent;
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            font-family: sans-serif;
-        }}
-        .container-vault {{
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            position: relative;
-            padding-right: 20px;
-        }}
-        .label-status {{
-            color: #FFFFFF;
-            font-size: 14px;
-            font-weight: bold;
-            margin-bottom: 5px;
-            letter-spacing: 0.5px;
-            text-shadow: 0px 2px 5px rgba(0,0,0,0.9);
-            opacity: 0.9;
-        }}
-        .shelf-row {{
-            display: flex;
-            flex-direction: row;
-            align-items: flex-end;
-            justify-content: center;
-            gap: 25px;
-            position: relative;
-            margin-top: 20px;
-        }}
-        .perfume-item {{
-            position: relative;
-            cursor: pointer;
-        }}
-        .real-bottle {{
-            object-fit: contain;
-            filter: drop-shadow(0px 12px 24px rgba(0,0,0,0.85));
-            transition: transform 0.08s ease-in-out;
-            -webkit-user-drag: none;
-            user-select: none;
-        }}
-        .img-jpg {{ height: 230px; }}
-        .img-bdc {{ height: 205px; }}
+    # --- FIXED HTML FRAME WITH ESCAPED BRACES FOR STREAMLIT COMPONENT ---
+    if jpg_base64 and bdc_base64:
+        html_code = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+            body {
+                background-color: transparent;
+                margin: 0;
+                padding: 0;
+                overflow: hidden;
+                font-family: sans-serif;
+            }
+            .container-vault {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                height: 45vh;
+                position: relative;
+                padding-right: 20px;
+            }
+            .label-status {
+                color: #FFFFFF;
+                font-size: 14px;
+                font-weight: bold;
+                margin-bottom: 5px;
+                letter-spacing: 0.5px;
+                text-shadow: 0px 2px 5px rgba(0,0,0,0.9);
+                opacity: 0.9;
+            }
+            .shelf-row {
+                display: flex;
+                flex-direction: row;
+                align-items: flex-end;
+                justify-content: center;
+                gap: 25px;
+                position: relative;
+                margin-top: 20px;
+            }
+            .perfume-item {
+                position: relative;
+                cursor: pointer;
+            }
+            .real-bottle {
+                object-fit: contain;
+                filter: drop-shadow(0px 12px 24px rgba(0,0,0,0.85));
+                transition: transform 0.08s ease-in-out;
+                -webkit-user-drag: none;
+                user-select: none;
+            }
+            .img-jpg { height: 230px; }
+            .img-bdc { height: 205px; }
 
-        .perfume-item:active .real-bottle {{
-            transform: scale(0.94) translateY(4px);
-        }}
-        
-        .mist-particle {{
-            position: absolute;
-            border-radius: 50%;
-            pointer-events: none;
-            filter: blur(3px);
-            animation: blowOut 0.45s cubic-bezier(0.1, 0.8, 0.25, 1) forwards;
-        }}
-        @keyframes blowOut {{
-            0% {{
-                width: 2px;
-                height: 2px;
-                left: var(--start-x);
-                top: var(--start-y);
-                opacity: 1;
-            }}
-            100% {{
-                width: 130px;
-                height: 95px;
-                left: calc(var(--start-x) + var(--move-x) - 65px);
-                top: calc(var(--start-y) + var(--move-y) - 45px);
-                opacity: 0;
-            }}
-        }}
-        </style>
-    </head>
-    <body>
-        <div class="container-vault">
-            <div id="status-text" class="label-status">Active Spray: Le Male Elixir</div>
+            .perfume-item:active .real-bottle {
+                transform: scale(0.94) translateY(4px);
+            }
             
-            <div class="shelf-row">
-                <div class="perfume-item" onclick="triggerSpray(event, 'jpg')">
-                    <img class="real-bottle img-jpg" src="{jpg_base64}" alt="Le Male Elixir">
-                </div>
+            .mist-particle {
+                position: absolute;
+                border-radius: 50%;
+                pointer-events: none;
+                filter: blur(3px);
+                animation: blowOut 0.45s cubic-bezier(0.1, 0.8, 0.25, 1) forwards;
+            }
+            @keyframes blowOut {
+                0% {
+                    width: 2px;
+                    height: 2px;
+                    left: var(--start-x);
+                    top: var(--start-y);
+                    opacity: 1;
+                }
+                100% {
+                    width: 130px;
+                    height: 95px;
+                    left: calc(var(--start-x) + var(--move-x) - 65px);
+                    top: calc(var(--start-y) + var(--move-y) - 45px);
+                    opacity: 0;
+                }
+            }
+            </style>
+        </head>
+        <body>
+            <div class="container-vault">
+                <div id="status-text" class="label-status">Active Spray: Le Male Elixir</div>
+                
+                <div class="shelf-row">
+                    <div class="perfume-item" onclick="triggerSpray(event, 'jpg')">
+                        <img class="real-bottle img-jpg" src="REPLACE_JPG_VAL" alt="Le Male Elixir">
+                    </div>
 
-                <div class="perfume-item" onclick="triggerSpray(event, 'bdc')">
-                    <img class="real-bottle img-bdc" src="{bdc_base64}" alt="Bleu De Chanel">
+                    <div class="perfume-item" onclick="triggerSpray(event, 'bdc')">
+                        <img class="real-bottle img-bdc" src="REPLACE_BDC_VAL" alt="Bleu De Chanel">
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <script>
-        // Synthesize Realistic Scent Atomizer Sound (Generative White Noise)
-        function playSpritzSound() {{
-            try {{
-                const AudioContext = window.AudioContext || window.webkitAudioContext;
-                if (!AudioContext) return;
-                const ctx = new AudioContext();
-                
-                // 1. Create White Noise Waveform Buffer
-                const bufSize = ctx.sampleRate * 0.45; 
-                const buffer = ctx.createBuffer(1, bufSize, ctx.sampleRate);
-                const data = buffer.getChannelData(0);
-                for (let i = 0; i < bufSize; i++) {{
-                    data[i] = Math.random() * 2 - 1;
-                }}
-                
-                const noiseSource = ctx.createBufferSource();
-                noiseSource.buffer = buffer;
-                
-                // 2. Highpass Filter to lock in crisp premium air mist pressure
-                const filter = ctx.createBiquadFilter();
-                filter.type = 'highpass';
-                filter.frequency.value = 6000; 
-                
-                // 3. Audio Envelope Curve (Instant punch drop down to soft release)
-                const gain = ctx.createGain();
-                gain.gain.setValueAtTime(0, ctx.currentTime);
-                gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.02);
-                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.42);
-                
-                // Audio Connections Pipeline
-                noiseSource.connect(filter);
-                filter.connect(gain);
-                gain.connect(ctx.destination);
-                
-                noiseSource.start();
-                noiseSource.stop(ctx.currentTime + 0.45);
-            }} catch (err) {{
-                console.log("Audio contextual trigger waiting for node focus event", err);
-            }}
-        }}
+            <script>
+            let audioCtx = null;
+            let noiseBuffer = null;
 
-        function triggerSpray(event, type) {{
-            const container = event.currentTarget;
-            const statusLabel = document.getElementById('status-text');
-            
-            if (type === 'jpg') {{
-                statusLabel.innerText = "Active Spray: Le Male Elixir";
-            }} else {{
-                statusLabel.innerText = "Active Spray: Bleu de Chanel";
-            }}
-            
-            // Execute synthetic mist sound pump
-            playSpritzSound();
-            
-            // Aligned spray release coordinates relative to cap anatomy
-            const startX = "50%";
-            const startY = type === 'jpg' ? "10px" : "15px";
-            
-            const colorGrad = type === 'jpg' 
-                ? 'radial-gradient(circle, rgba(212,175,55,0.65) 0%, rgba(139,107,14,0) 75%)'
-                : 'radial-gradient(circle, rgba(235,245,255,0.55) 0%, rgba(160,190,240,0) 75%)';
+            function initAudioEngine() {
+                try {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    if (!AudioContext) return;
+                    audioCtx = new AudioContext();
+                    
+                    const bufSize = audioCtx.sampleRate * 0.45; 
+                    noiseBuffer = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
+                    const data = noiseBuffer.getChannelData(0);
+                    for (let i = 0; i < bufSize; i++) {
+                        data[i] = Math.random() * 2 - 1;
+                    }
+                } catch (e) {
+                    console.log("Audio pipeline loaded", e);
+                }
+            }
 
-            for (let i = 0; i < 10; i++) {{
-                const p = document.createElement('div');
-                p.classList.add('mist-particle');
-                p.style.background = colorGrad;
-                p.style.setProperty('--start-x', startX);
-                p.style.setProperty('--start-y', startY);
-                
-                // Volumetric cloud direction (spraying up-left)
-                const angle = (Math.random() * 40 - 75) * (Math.PI / 180); 
-                const dist = Math.random() * 90 + 75;
-                
-                p.style.setProperty('--move-x', Math.cos(angle) * dist + 'px');
-                p.style.setProperty('--move-y', Math.sin(angle) * dist + 'px');
-                p.style.animationDuration = (Math.random() * 0.12 + 0.38) + 's';
-                
-                container.appendChild(p);
-                setTimeout(() => {{ p.remove(); }}, 450);
-            }}
-        }}
-        </script>
-    </body>
-    </html>
-    """
-    components.html(html_code, height=360, scrolling=False)
+            function playSpritzSound() {
+                if (!audioCtx) initAudioEngine();
+                if (!audioCtx || !noiseBuffer) return;
 
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+
+                try {
+                    const noiseSource = audioCtx.createBufferSource();
+                    noiseSource.buffer = noiseBuffer;
+                    
+                    const filter = audioCtx.createBiquadFilter();
+                    filter.type = 'highpass';
+                    filter.frequency.value = 6000; 
+                    
+                    const gain = audioCtx.createGain();
+                    gain.gain.setValueAtTime(0, audioCtx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + 0.02);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.42);
+                    
+                    noiseSource.connect(filter);
+                    filter.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    
+                    noiseSource.start();
+                } catch (err) {
+                    console.log("Audio track bypass trigger", err);
+                }
+            }
+
+            function triggerSpray(event, type) {
+                const container = event.currentTarget;
+                const statusLabel = document.getElementById('status-text');
+                
+                if (type === 'jpg') {
+                    statusLabel.innerText = "Active Spray: Le Male Elixir";
+                } else {
+                    statusLabel.innerText = "Active Spray: Bleu de Chanel";
+                }
+                
+                playSpritzSound();
+                
+                const startX = "50%";
+                const startY = type === 'jpg' ? "10px" : "15px";
+                
+                const colorGrad = type === 'jpg' 
+                    ? 'radial-gradient(circle, rgba(212,175,55,0.65) 0%, rgba(139,107,14,0) 75%)'
+                    : 'radial-gradient(circle, rgba(235,245,255,0.55) 0%, rgba(160,190,240,0) 75%)';
+
+                for (let i = 0; i < 10; i++) {
+                    const p = document.createElement('div');
+                    p.classList.add('mist-particle');
+                    p.style.background = colorGrad;
+                    p.style.setProperty('--start-x', startX);
+                    p.style.setProperty('--start-y', startY);
+                    
+                    const angle = (Math.random() * 40 - 75) * (Math.PI / 180); 
+                    const dist = Math.random() * 90 + 75;
+                    
+                    p.style.setProperty('--move-x', Math.cos(angle) * dist + 'px');
+                    p.style.setProperty('--move-y', Math.sin(angle) * dist + 'px');
+                    p.style.animationDuration = (Math.random() * 0.12 + 0.38) + 's';
+                    
+                    container.appendChild(p);
+                    setTimeout(() => { p.remove(); }, 450);
+                }
+            }
+            </script>
+        </body>
+        </html>
+        """
+        html_code = html_code.replace("REPLACE_JPG_VAL", jpg_base64).replace("REPLACE_BDC_VAL", bdc_base64)
+        components.html(html_code, height=360, scrolling=False)
