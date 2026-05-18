@@ -19,9 +19,13 @@ if not GEMINI_KEY or not WEATHER_KEY:
 # Initialize Gemini Client
 client = genai.Client(api_key=GEMINI_KEY)
 
-# Initialize Session State Memory for History
+# Initialize Session State Memory for History and Active Screen Results
 if "scent_history" not in st.session_state:
     st.session_state.scent_history = []
+if "active_analysis" not in st.session_state:
+    st.session_state.active_analysis = None
+if "weather_info" not in st.session_state:
+    st.session_state.weather_info = None
 
 # 2. LOCAL BRAND KNOWLEDGE BASE
 PH_SCENT_MAP = {
@@ -41,7 +45,7 @@ PH_SCENT_MAP = {
     "D'Matteos - DREAMCHASER" : "LV Imagination"
 }
 
-# 3. BACKGROUND FUNCTION WITH BALANCED CSS (Frosted Light Cards + Dark Expander Context)
+# 3. BACKGROUND FUNCTION WITH BALANCED CSS
 def set_bg_from_url():
     st.markdown(
         """
@@ -86,15 +90,15 @@ def set_bg_from_url():
             fill: #FFFFFF !important;
         }
         
-        /* RETURN THE GORGEOUS EXPANDER STYLE FROM IMAGE 6F4A4F */
+        /* EXPANDER STYLE FROM IMAGE 6F4A4F */
         .stExpander {
-            background-color: #1E1E24 !important; /* Dark container title framework */
+            background-color: #1E1E24 !important;
             border: 1px solid rgba(255, 255, 255, 0.1) !important;
             border-radius: 10px !important;
             margin-bottom: 10px;
         }
         .stExpander summary, .stExpander summary span, .stExpander summary p {
-            color: #FFFFFF !important; /* Crisp white titles for the perfume headers */
+            color: #FFFFFF !important;
             font-weight: 600 !important;
         }
         
@@ -103,7 +107,6 @@ def set_bg_from_url():
             background-color: #121214 !important;
             padding: 15px !important;
         }
-        /* Sub-cards inside the expander drawer */
         div[data-testid="stExpanderDetails"] .stMarkdown {
             background-color: rgba(255, 255, 255, 0.05) !important;
             border: 1px solid rgba(255, 255, 255, 0.08) !important;
@@ -112,7 +115,7 @@ def set_bg_from_url():
             margin-bottom: 8px;
         }
         div[data-testid="stExpanderDetails"] p, div[data-testid="stExpanderDetails"] strong {
-            color: #FFFFFF !important; /* Forces complete internal content readability */
+            color: #FFFFFF !important;
         }
         
         /* Sidebar Styling (Scent History Panel) */
@@ -180,6 +183,8 @@ with st.sidebar:
         
         if st.button("🗑️ Clear History", use_container_width=True):
             st.session_state.scent_history = []
+            st.session_state.active_analysis = None
+            st.session_state.weather_info = None
             st.rerun()
 
 # --- MAIN PAGE CONTENT ---
@@ -217,7 +222,6 @@ if st.button("🚀 Find My Scent", use_container_width=True):
                         bytes_data = uploaded_file.getvalue()
                         image_parts.append(types.Part.from_bytes(data=bytes_data, mime_type=uploaded_file.type))
 
-                    # SAFE LINE RE-ASSEMBLY WITH STRICT BLOCK NEWLINES (\n)
                     prompt_lines = [
                         f"Current Weather: {temp}C, {desc}.",
                         f"Target Occasion: {occasion}.",
@@ -242,19 +246,18 @@ if st.button("🚀 Find My Scent", use_container_width=True):
                         )
                     )
                     
-                    st.success(f"Weather in {city}: {temp}°C, {desc.capitalize()}")
-                    st.markdown("<h3 style='color: #FFFFFF; margin-top: 20px; font-weight: 700;'>🔮 Your Fragrance Analysis Breakdown</h3>", unsafe_allow_html=True)
+                    # Store variables globally inside session memory to safe-keep past a manual UI reload trigger
+                    st.session_state.weather_info = f"Weather in {city}: {temp}°C, {desc.capitalize()}"
                     
+                    parsed_perfumes = []
                     raw_text = response.text
                     raw_blocks = raw_text.split("---PERFUME---")
                     
-                    detected_any = False
                     for block in raw_blocks:
                         if "---END---" in block:
-                            detected_any = True
                             clean_block = block.split("---END---")[0].strip()
-                            
                             name, verdict, profile, reason = "Unknown Scent", "N/A", "N/A", "N/A"
+                            
                             for line in clean_block.split("\n"):
                                 if line.strip().startswith("NAME:"):
                                     name = line.replace("NAME:", "").strip()
@@ -265,13 +268,14 @@ if st.button("🚀 Find My Scent", use_container_width=True):
                                 elif line.strip().startswith("REASON:"):
                                     reason = line.replace("REASON:", "").strip()
                             
-                            status_badge = "🟢" if "GOOD" in verdict.upper() else "🚨"
+                            parsed_perfumes.append({
+                                "name": name,
+                                "verdict": verdict,
+                                "profile": profile,
+                                "reason": reason
+                            })
                             
-                            # GORGEOUS DARK DROPDOWN CARD RE-ACTIVATED
-                            with st.expander(f"{status_badge} {name} — {verdict}"):
-                                st.markdown(f"**Scent Profile:** {profile}")
-                                st.markdown(f"**Weather Assessment:** {reason}")
-                            
+                            # Append to modern sidebar logs if highly recommended
                             if "GOOD" in verdict.upper():
                                 timestamp = datetime.now().strftime("%b %d, %I:%M %p")
                                 if not any(h['perfume'] == name and h['occasion'] == occasion for h in st.session_state.scent_history):
@@ -282,12 +286,27 @@ if st.button("🚀 Find My Scent", use_container_width=True):
                                         "verdict": reason
                                     })
                     
-                    if not detected_any:
-                        st.markdown(raw_text)
-                    else:
-                        st.rerun()
+                    # Safe keeping screen lists active 
+                    st.session_state.active_analysis = parsed_perfumes if parsed_perfumes else raw_text
+                    st.rerun()
                             
                 except Exception as e:
                     st.error(f"An error occurred while cleaning the layout: {e}")
+
+# --- PERSISTENT OUTPUT ZONE RIGHT UNDER THE BUTTON ---
+if st.session_state.active_analysis:
+    st.success(st.session_state.weather_info)
+    st.markdown("<h3 style='color: #FFFFFF; margin-top: 20px; font-weight: 700;'>🔮 Your Fragrance Analysis Breakdown</h3>", unsafe_allow_html=True)
+    
+    # Check if we have parsed structured expander objects or raw strings
+    if isinstance(st.session_state.active_analysis, list):
+        for p in st.session_state.active_analysis:
+            status_badge = "🟢" if "GOOD" in p['verdict'].upper() else "🚨"
+            
+            with st.expander(f"{status_badge} {p['name']} — {p['verdict']}"):
+                st.markdown(f"**Scent Profile:** {p['profile']}")
+                st.markdown(f"**Weather Assessment:** {p['reason']}")
+    else:
+        st.markdown(st.session_state.active_analysis)
 
 st.info("💡 Tip: Selecting the exact occasion helps Gemini pick the perfect compliment magnet for your vibe.")
