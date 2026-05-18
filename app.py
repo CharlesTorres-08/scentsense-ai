@@ -46,7 +46,7 @@ PH_SCENT_MAP = {
     "D'Matteos - DREAMCHASER" : "LV Imagination"
 }
 
-# 3. BACKGROUND FUNCTION
+# 3. BACKGROUND FUNCTION WITH UI OVERRIDES
 def set_bg_from_url():
     st.markdown(
         """
@@ -154,7 +154,7 @@ with st.sidebar:
             st.rerun()
 
 # --- MAIN COLUMNS ---
-main_col, perfume_col = st.columns([3.2, 1.2], gap="large")
+main_col, perfume_col = st.columns([2.8, 1.6], gap="large")
 
 with main_col:
     st.markdown(
@@ -210,8 +210,7 @@ with main_col:
                 st.markdown(f"**Scent Profile:** {p['profile']}\n\n**Weather Assessment:** {p['reason']}")
 
 with perfume_col:
-    # --- INTERACTIVE TRUE PHOTOREALISTIC BOTTLES VAULT ---
-    # Gumagamit ng eksaktong transparent-cut studio graphics para sa BDC at Le Male Elixir.
+    # --- PHOTOREALISTIC DUAL DISPLAY FRAME (Eksaktong magkatabi gaya ng nasa larawan) ---
     html_code = """
     <!DOCTYPE html>
     <html>
@@ -223,107 +222,136 @@ with perfume_col:
             padding: 0;
             overflow: hidden;
             font-family: sans-serif;
-            text-align: center;
         }
-        .display-vault {
+        .container-vault {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 50px;
-            padding-top: 15px;
+            justify-content: center;
+            height: 100vh;
+            position: relative;
+            padding-right: 20px;
         }
-        .instruction {
-            color: #CCCCCC;
+        .label-status {
+            color: #FFFFFF;
             font-size: 14px;
-            font-style: italic;
-            user-select: none;
             font-weight: bold;
-            text-shadow: 0px 2px 4px rgba(0,0,0,0.7);
+            margin-bottom: 5px;
+            letter-spacing: 0.5px;
+            text-shadow: 0px 2px 5px rgba(0,0,0,0.9);
+            opacity: 0.9;
+        }
+        .shelf-row {
+            display: flex;
+            flex-direction: row;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 20px;
+            position: relative;
+            margin-top: 20px;
         }
         .perfume-item {
             position: relative;
-            display: inline-block;
             cursor: pointer;
         }
         .real-bottle {
-            height: 190px;
             object-fit: contain;
-            filter: drop-shadow(0px 8px 16px rgba(0,0,0,0.6));
+            filter: drop-shadow(0px 12px 24px rgba(0,0,0,0.85));
             transition: transform 0.08s ease-in-out;
             -webkit-user-drag: none;
             user-select: none;
         }
-        /* Haptic click effect */
+        /* Suplementary exact height limits matching the design template */
+        .img-jpg { height: 230px; }
+        .img-bdc { height: 205px; }
+
         .perfume-item:active .real-bottle {
-            transform: scale(0.93) translateY(3px);
+            transform: scale(0.94) translateY(4px);
         }
         
-        /* Fine luxury mist cloud particle system */
-        .mist-cloud {
+        /* Fine custom mist particle engine matching individual aesthetics */
+        .mist-particle {
             position: absolute;
-            background: radial-gradient(circle, rgba(245, 250, 255, 0.55) 0%, rgba(180, 210, 255, 0) 75%);
             border-radius: 50%;
             pointer-events: none;
-            filter: blur(2px);
-            animation: blowSpray 0.45s cubic-bezier(0.1, 0.8, 0.25, 1) forwards;
+            filter: blur(3px);
+            animation: blowOut 0.45s cubic-bezier(0.1, 0.8, 0.25, 1) forwards;
         }
-        @keyframes blowSpray {
+        @keyframes blowOut {
             0% {
                 width: 2px;
                 height: 2px;
-                left: 50%;
-                top: 0px;
-                transform: translateX(-50%);
+                left: var(--start-x);
+                top: var(--start-y);
                 opacity: 1;
             }
             100% {
-                width: 120px;
-                height: 85px;
-                left: calc(50% + var(--target-x));
-                top: var(--target-y);
-                transform: translateX(-50%);
+                width: 130px;
+                height: 95px;
+                left: calc(var(--start-x) + var(--move-x) - 65px);
+                top: calc(var(--start-y) + var(--move-y) - 45px);
                 opacity: 0;
             }
         }
         </style>
     </head>
     <body>
-        <div class="display-vault">
-            <div class="instruction">Click to Spray!</div>
+        <div class="container-vault">
+            <div id="status-text" class="label-status">Active Spray: Le Male Elixir</div>
             
-            <div class="perfume-item" onclick="triggerAtomizer(event, -10)">
-                <img class="real-bottle" src="https://i.postimg.com/pXv1r0Tz/bdc-trans.png" alt="Bleu De Chanel">
-            </div>
+            <div class="shelf-row">
+                <div class="perfume-item" onclick="triggerSpray(event, 'jpg')">
+                    <img class="real-bottle img-jpg" src="https://i.postimg.com/wM46k4Vj/jpg-elixir-trans.png" alt="Le Male Elixir">
+                </div>
 
-            <div class="perfume-item" onclick="triggerAtomizer(event, -5)">
-                <img class="real-bottle" src="https://i.postimg.com/wM46k4Vj/jpg-elixir-trans.png" alt="Le Male Elixir">
+                <div class="perfume-item" onclick="triggerSpray(event, 'bdc')">
+                    <img class="real-bottle img-bdc" src="https://i.postimg.com/pXv1r0Tz/bdc-trans.png" alt="Bleu De Chanel">
+                </div>
             </div>
         </div>
 
         <script>
-        function triggerAtomizer(event, startY) {
-            const wrapper = event.currentTarget;
+        function triggerSpray(event, type) {
+            const container = event.currentTarget;
+            const statusLabel = document.getElementById('status-text');
             
-            for (let i = 0; i < 9; i++) {
-                const mist = document.createElement('div');
-                mist.classList.add('mist-cloud');
+            // Dynamic text indicator update
+            if (type === 'jpg') {
+                statusLabel.innerText = "Active Spray: Le Male Elixir";
+            } else {
+                statusLabel.innerText = "Active Spray: Bleu de Chanel";
+            }
+            
+            // Particle generation points matching the nozzle tips
+            const startX = type === 'jpg' ? "50%" : "50%";
+            const startY = type === 'jpg' ? "10px" : "15px";
+            
+            // Gold cloud for Elixir, frosty ice mist cloud for BDC
+            const colorGrad = type === 'jpg' 
+                ? 'radial-gradient(circle, rgba(212,175,55,0.65) 0%, rgba(139,107,14,0) 75%)'
+                : 'radial-gradient(circle, rgba(235,245,255,0.55) 0%, rgba(160,190,240,0) 75%)';
+
+            for (let i = 0; i < 10; i++) {
+                const p = document.createElement('div');
+                p.classList.add('mist-particle');
+                p.style.background = colorGrad;
+                p.style.setProperty('--start-x', startX);
+                p.style.setProperty('--start-y', startY);
                 
-                const angle = (Math.random() * 46 - 23) * (Math.PI / 180);
-                const distance = Math.random() * 85 + 70;
+                // Spread direction setup (leftward spray matching original template)
+                const angle = (Math.random() * 40 - 75) * (Math.PI / 180); 
+                const dist = Math.random() * 90 + 75;
                 
-                const xOffset = Math.sin(angle) * distance;
-                const yOffset = Math.cos(angle) * distance;
+                p.style.setProperty('--move-x', Math.cos(angle) * dist + 'px');
+                p.style.setProperty('--move-y', Math.sin(angle) * dist + 'px');
+                p.style.animationDuration = (Math.random() * 0.12 + 0.38) + 's';
                 
-                mist.style.setProperty('--target-x', xOffset + 'px');
-                mist.style.setProperty('--target-y', (startY - yOffset) + 'px');
-                mist.style.animationDuration = (Math.random() * 0.12 + 0.38) + 's';
-                
-                wrapper.appendChild(mist);
-                setTimeout(() => { mist.remove(); }, 450);
+                container.appendChild(p);
+                setTimeout(() => { p.remove(); }, 450);
             }
         }
         </script>
     </body>
     </html>
     """
-    components.html(html_code, height=650, scrolling=False)
+    components.html(html_code, height=360, scrolling=False)
