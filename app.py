@@ -1,6 +1,7 @@
 import streamlit as st
 import os
 import requests
+import base64
 from datetime import datetime
 from dotenv import load_dotenv
 from google import genai
@@ -27,6 +28,17 @@ if "active_analysis" not in st.session_state:
     st.session_state.active_analysis = None
 if "weather_info" not in st.session_state:
     st.session_state.weather_info = None
+
+# Helper function para i-convert ang local image mo patungong safe HTML data stream
+def get_base64_image(image_path):
+    if os.path.exists(image_path):
+        with open(image_path, "rb") as img_file:
+            return f"data:image/png;base64,{base64.b64encode(img_file.read()).decode()}"
+    return ""
+
+# I-convert ang mga local files mo
+jpg_base64 = get_base64_image("jpg_elixir.png")
+bdc_base64 = get_base64_image("bdc.png")
 
 # 2. LOCAL BRAND KNOWLEDGE BASE
 PH_SCENT_MAP = {
@@ -210,20 +222,20 @@ with main_col:
                 st.markdown(f"**Scent Profile:** {p['profile']}\n\n**Weather Assessment:** {p['reason']}")
 
 with perfume_col:
-    # --- PHOTOREALISTIC DUAL DISPLAY FRAME (Eksaktong magkatabi gaya ng nasa larawan) ---
-    html_code = """
+    # --- PHOTOREALISTIC BASE64 LOCAL VAULT FRAME ---
+    html_code = f"""
     <!DOCTYPE html>
     <html>
     <head>
         <style>
-        body {
+        body {{
             background-color: transparent;
             margin: 0;
             padding: 0;
             overflow: hidden;
             font-family: sans-serif;
-        }
-        .container-vault {
+        }}
+        .container-vault {{
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -231,8 +243,8 @@ with perfume_col:
             height: 100vh;
             position: relative;
             padding-right: 20px;
-        }
-        .label-status {
+        }}
+        .label-status {{
             color: #FFFFFF;
             font-size: 14px;
             font-weight: bold;
@@ -240,59 +252,57 @@ with perfume_col:
             letter-spacing: 0.5px;
             text-shadow: 0px 2px 5px rgba(0,0,0,0.9);
             opacity: 0.9;
-        }
-        .shelf-row {
+        }}
+        .shelf-row {{
             display: flex;
             flex-direction: row;
             align-items: flex-end;
             justify-content: center;
-            gap: 20px;
+            gap: 25px;
             position: relative;
             margin-top: 20px;
-        }
-        .perfume-item {
+        }}
+        .perfume-item {{
             position: relative;
             cursor: pointer;
-        }
-        .real-bottle {
+        }}
+        .real-bottle {{
             object-fit: contain;
             filter: drop-shadow(0px 12px 24px rgba(0,0,0,0.85));
             transition: transform 0.08s ease-in-out;
             -webkit-user-drag: none;
             user-select: none;
-        }
-        /* Suplementary exact height limits matching the design template */
-        .img-jpg { height: 230px; }
-        .img-bdc { height: 205px; }
+        }}
+        .img-jpg {{ height: 230px; }}
+        .img-bdc {{ height: 205px; }}
 
-        .perfume-item:active .real-bottle {
+        .perfume-item:active .real-bottle {{
             transform: scale(0.94) translateY(4px);
-        }
+        }}
         
-        /* Fine custom mist particle engine matching individual aesthetics */
-        .mist-particle {
+        .mist-particle {{
             position: absolute;
             border-radius: 50%;
             pointer-events: none;
             filter: blur(3px);
             animation: blowOut 0.45s cubic-bezier(0.1, 0.8, 0.25, 1) forwards;
-        }
-        @keyframes blowOut {
-            0% {
+        }}
+        @keyframes blowOut {{
+            0% {{
                 width: 2px;
                 height: 2px;
                 left: var(--start-x);
                 top: var(--start-y);
                 opacity: 1;
-            }
-            100% {
+            }}
+            100% {{
                 width: 130px;
                 height: 95px;
                 left: calc(var(--start-x) + var(--move-x) - 65px);
                 top: calc(var(--start-y) + var(--move-y) - 45px);
                 opacity: 0;
-            }
-        }
+            }}
+        }}
         </style>
     </head>
     <body>
@@ -301,44 +311,41 @@ with perfume_col:
             
             <div class="shelf-row">
                 <div class="perfume-item" onclick="triggerSpray(event, 'jpg')">
-                    <img class="real-bottle img-jpg" src="https://i.postimg.com/wM46k4Vj/jpg-elixir-trans.png" alt="Le Male Elixir">
+                    <img class="real-bottle img-jpg" src="{jpg_base64}" alt="Le Male Elixir">
                 </div>
 
                 <div class="perfume-item" onclick="triggerSpray(event, 'bdc')">
-                    <img class="real-bottle img-bdc" src="https://i.postimg.com/pXv1r0Tz/bdc-trans.png" alt="Bleu De Chanel">
+                    <img class="real-bottle img-bdc" src="{bdc_base64}" alt="Bleu De Chanel">
                 </div>
             </div>
         </div>
 
         <script>
-        function triggerSpray(event, type) {
+        function triggerSpray(event, type) {{
             const container = event.currentTarget;
             const statusLabel = document.getElementById('status-text');
             
-            // Dynamic text indicator update
-            if (type === 'jpg') {
+            if (type === 'jpg') {{
                 statusLabel.innerText = "Active Spray: Le Male Elixir";
-            } else {
+            }} else {{
                 statusLabel.innerText = "Active Spray: Bleu de Chanel";
-            }
+            }}
             
-            // Particle generation points matching the nozzle tips
-            const startX = type === 'jpg' ? "50%" : "50%";
+            const startX = "50%";
             const startY = type === 'jpg' ? "10px" : "15px";
             
-            // Gold cloud for Elixir, frosty ice mist cloud for BDC
             const colorGrad = type === 'jpg' 
                 ? 'radial-gradient(circle, rgba(212,175,55,0.65) 0%, rgba(139,107,14,0) 75%)'
                 : 'radial-gradient(circle, rgba(235,245,255,0.55) 0%, rgba(160,190,240,0) 75%)';
 
-            for (let i = 0; i < 10; i++) {
+            for (let i = 0; i < 10; i++) {{
                 const p = document.createElement('div');
                 p.classList.add('mist-particle');
                 p.style.background = colorGrad;
                 p.style.setProperty('--start-x', startX);
                 p.style.setProperty('--start-y', startY);
                 
-                // Spread direction setup (leftward spray matching original template)
+                // Gold cloud direction matching the template image (spraying up-left)
                 const angle = (Math.random() * 40 - 75) * (Math.PI / 180); 
                 const dist = Math.random() * 90 + 75;
                 
@@ -347,9 +354,9 @@ with perfume_col:
                 p.style.animationDuration = (Math.random() * 0.12 + 0.38) + 's';
                 
                 container.appendChild(p);
-                setTimeout(() => { p.remove(); }, 450);
-            }
-        }
+                setTimeout(() => {{ p.remove(); }}, 450);
+            }}
+        }}
         </script>
     </body>
     </html>
