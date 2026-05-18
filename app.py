@@ -36,7 +36,7 @@ PH_SCENT_MAP = {
     "D'Matteos - DREAMCHASER" : "LV Imagination"
 }
 
-# 3. BACKGROUND FUNCTION WITH HIGH-CONTRAST CSS OVERRIDES
+# 3. BACKGROUND FUNCTION WITH BALANCED CSS CONTRAST OVERRIDES
 def set_bg_from_url():
     st.markdown(
         f"""
@@ -48,7 +48,7 @@ def set_bg_from_url():
             background-attachment: fixed;
         }}
         
-        /* Frosted glass container shields with higher visibility */
+        /* Glassmorphism card wrappers */
         .stMarkdown, .stTextInput, .stCaption, .stExpander, div[data-testid="stFileUploader"] {{
             background-color: rgba(255, 255, 255, 0.92) !important;
             padding: 12px;
@@ -57,25 +57,32 @@ def set_bg_from_url():
             box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
         }}
         
-        /* FORCE EVERYTHING INSIDE STREAMLIT WRAPPERS TO BE BLACK/DARK GREY */
-        
-        /* Input labels and placeholders */
-        .stApp label, .stApp p, .stApp span, .stApp div {{
+        /* 1. Target general structural texts */
+        .stApp label, .stApp p, .stApp span {{
             color: #1A1A1A !important;
         }}
         
-        /* Target the specific label fields like 'Where are you right now?' */
+        /* 2. Target specific widget titles */
         div[data-testid="stWidgetLabel"] p {{
             color: #000000 !important;
             font-weight: 600 !important;
         }}
         
-        /* File uploader dropzone texts */
-        div[data-testid="stFileUploader"] section div {{
-            color: #333333 !important;
+        /* 3. PROTECT FILE UPLOADER BUTTONS AND INTERNAL BLOCKS */
+        div[data-testid="stFileUploaderDropzone"] {{
+            background-color: #1E1E24 !important; /* Forces a stable dark background */
+            border-radius: 8px;
+        }}
+        /* Keep all texts inside the drag-and-drop zone a light, bright grey */
+        div[data-testid="stFileUploaderDropzone"] * {{
+            color: #E0E0E0 !important;
+        }}
+        /* Ensure button icon explicitly uses light styling */
+        div[data-testid="stFileUploaderDropzone"] svg {{
+            fill: #FFFFFF !important;
         }}
         
-        /* Expander headers and text details */
+        /* 4. Expander headers and layout blocks */
         .stExpander summary, .stExpander summary span, .stExpander summary p {{
             color: #000000 !important;
             font-weight: bold !important;
@@ -86,7 +93,7 @@ def set_bg_from_url():
             background-color: #FFFFFF !important;
         }}
         
-        /* Reset input field interior text so it stays legible while typing */
+        /* 5. Input text normalization */
         .stTextInput input {{
             color: #000000 !important;
             background-color: #FFFFFF !important;
@@ -116,7 +123,7 @@ st.set_page_config(
 )
 set_bg_from_url()
 
-# Custom Header Section that bypasses native theme styling completely
+# Custom Header Section
 st.markdown(
     """
     <div style='background-color: rgba(255, 255, 255, 0.95); padding: 20px; border-radius: 12px; margin-bottom: 20px; border-left: 5px solid #1A1A1A;'>
