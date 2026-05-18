@@ -311,9 +311,8 @@ with main_col:
 
     st.info("💡 Tip: Selecting the exact occasion helps Gemini pick the perfect compliment magnet for your vibe.")
 
-# --- RIGHT COLUMN: UNLI-CLICK BDC SPRAY ANIMATION VIA EMBEDDED IFRAME COMPONENT ---
+# --- RIGHT COLUMN: UNLI-CLICK BDC SPRAY ANIMATION WITH RAW EMBEDDED HIGH-FIDELITY BOTTLE CSS ---
 with bdc_col:
-    # Embedded HTML frame isolate wrapper to secure proper render execution
     html_code = """
     <!DOCTYPE html>
     <html>
@@ -330,56 +329,120 @@ with bdc_col:
         .container {
             position: relative;
             width: 100%;
-            height: 480px;
+            height: 520px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-start;
+            padding-top: 20px;
         }
         .instruction-tag {
             color: #CCCCCC;
-            font-size: 13px;
+            font-size: 14px;
             font-style: italic;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
             user-select: none;
+            font-weight: 500;
+            text-shadow: 0px 2px 4px rgba(0,0,0,0.5);
         }
         .bottle-wrapper {
             position: relative;
             display: inline-block;
             cursor: pointer;
-        }
-        .bdc-bottle {
-            width: 200px;
-            transition: transform 0.08s ease-in-out;
-            -webkit-user-drag: none;
-            user-select: none;
-            filter: drop-shadow(0px 8px 25px rgba(0,0,0,0.7));
-        }
-        /* Push animation response when user clicks */
-        .bottle-wrapper:active .bdc-bottle {
-            transform: scale(0.95) translateY(3px);
+            margin-top: 30px;
         }
         
-        /* Fine mist spray mist particle setup */
+        /* HIGH FIDELITY EMBEDDED CSS BOTE PARA ANTI-BLOCK OUT AT LIFELIKE DESIGN */
+        .glass-bottle {
+            width: 170px;
+            height: 180px;
+            background: linear-gradient(135deg, #0d162d 0%, #050814 100%);
+            border-radius: 16px;
+            border: 3px solid #1a294a;
+            position: relative;
+            box-shadow: 0px 15px 35px rgba(0,0,0,0.8), inset 0px 0px 20px rgba(255,255,255,0.05);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.08s ease-in-out;
+        }
+        /* Cap of BDC */
+        .glass-bottle::before {
+            content: '';
+            position: absolute;
+            top: -42px;
+            width: 54px;
+            height: 42px;
+            background: linear-gradient(to right, #050811, #141b2d, #050811);
+            border-radius: 6px;
+            border-bottom: 4px solid #1c263d;
+            box-shadow: 0px 4px 10px rgba(0,0,0,0.5);
+        }
+        /* Gold/Silver Atomizer neck ring beneath cap */
+        .glass-bottle::after {
+            content: '';
+            position: absolute;
+            top: -6px;
+            width: 30px;
+            height: 6px;
+            background: #2b3956;
+        }
+        /* Crisp Typography Text Embeds inside Bottle Base */
+        .brand-text {
+            color: #ffffff;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            font-size: 13px;
+            letter-spacing: 5px;
+            font-weight: bold;
+            margin-bottom: 2px;
+            opacity: 0.95;
+            user-select: none;
+        }
+        .sub-brand-text {
+            color: #ffffff;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            font-size: 8px;
+            letter-spacing: 3px;
+            opacity: 0.7;
+            user-select: none;
+            margin-bottom: 12px;
+        }
+        .fragrance-text {
+            color: #ffffff;
+            font-family: sans-serif;
+            font-size: 15px;
+            letter-spacing: 4px;
+            font-weight: 500;
+            opacity: 0.9;
+            user-select: none;
+        }
+        
+        /* Click Haptics push animation response */
+        .bottle-wrapper:active .glass-bottle {
+            transform: scale(0.94) translateY(4px);
+        }
+        
+        /* Volumetric vapor fine mist cloud particle engine */
         .mist-particle {
             position: absolute;
-            background: radial-gradient(circle, rgba(235, 245, 255, 0.6) 0%, rgba(200, 225, 255, 0) 70%);
+            background: radial-gradient(circle, rgba(230, 245, 255, 0.55) 0%, rgba(190, 220, 255, 0) 75%);
             border-radius: 50%;
             pointer-events: none;
-            filter: blur(2px);
-            animation: atomizedSpray 0.45s cubic-bezier(0.1, 0.8, 0.25, 1) forwards;
+            filter: blur(3px);
+            animation: atomizedSpray 0.48s cubic-bezier(0.1, 0.8, 0.25, 1) forwards;
         }
         @keyframes atomizedSpray {
             0% {
-                width: 3px;
-                height: 3px;
-                left: 100px; /* Aligned dead-center on the cap top */
-                top: 45px;
+                width: 2px;
+                height: 2px;
+                left: 85px; /* Centered right over the atomizer tip */
+                top: -20px;
                 opacity: 1;
             }
             100% {
-                width: 90px;
-                height: 70px;
+                width: 100px;
+                height: 80px;
                 left: var(--target-x);
                 top: var(--target-y);
                 opacity: 0;
@@ -392,7 +455,11 @@ with bdc_col:
             <div class="instruction-tag">Click to Spray!</div>
             
             <div class="bottle-wrapper" id="bdcWrapper" onclick="fireUnliMist(event)">
-                <img class="bdc-bottle" src="https://i.postimg.co/j5g333vH/bdc-render.png" alt="Bleu De Chanel">
+                <div class="glass-bottle">
+                    <div class="brand-text">BLEU</div>
+                    <div class="sub-brand-text">DE</div>
+                    <div class="fragrance-text">CHANEL</div>
+                </div>
             </div>
         </div>
 
@@ -400,40 +467,38 @@ with bdc_col:
         function fireUnliMist(event) {
             const wrapper = document.getElementById('bdcWrapper');
             
-            // Fires 8 cloud layers instantly for heavy volumetric atomizer clouding
+            // Fires 8 cloud clusters instantly for a deep rich misty experience
             for (let i = 0; i < 8; i++) {
                 const particle = document.createElement('div');
                 particle.classList.add('mist-particle');
                 
-                // Spread patterns mirroring a real fine luxury cologne pump
-                const spreadAngle = (Math.random() * 50 - 25) * (Math.PI / 180);
-                const projectDistance = Math.random() * 80 + 75;
+                // Fine dynamic arc calculations mirroring a luxurious real performance atomizer pump
+                const spreadAngle = (Math.random() * 55 - 27.5) * (Math.PI / 180);
+                const projectDistance = Math.random() * 85 + 80;
                 
-                // Calculate trajectory offset coordinates
                 const xOffset = Math.sin(spreadAngle) * projectDistance;
                 const yOffset = Math.cos(spreadAngle) * projectDistance;
                 
-                // Set custom target offsets dynamically per single node cycle
-                const targetX = (100 + xOffset - 45) + "px";
-                const targetY = (45 - yOffset) + "px";
+                // Track dynamic node paths relative to bottle trigger apex
+                const targetX = (85 + xOffset - 50) + "px";
+                const targetY = (-20 - yOffset) + "px";
                 
                 particle.style.setProperty('--target-x', targetX);
                 particle.style.setProperty('--target-y', targetY);
                 
-                // Minor speed decay variation for realism
+                // Minor lifetime velocity drift variation
                 particle.style.animationDuration = (Math.random() * 0.15 + 0.35) + "s";
                 
                 wrapper.appendChild(particle);
                 
-                // Immediate disposal loop right after transition ends
+                // Memory clearance after transition completes
                 setTimeout(() => {
                     particle.remove();
-                }, 450);
+                }, 480);
             }
         }
         </script>
     </body>
     </html>
     """
-    # Safe rendering isolated wrapper element frame
-    components.html(html_code, height=500, scrolling=False)
+    components.html(html_code, height=540, scrolling=False)
