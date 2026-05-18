@@ -187,39 +187,98 @@ with main_col:
         if not uploaded_files or not city:
             st.warning("Please provide both your city and at least one perfume photo!")
         else:
-            with st.spinner("Analyzing your fragrance collection..."):
+            with st.spinner("Analyzing your fragrance collection and searching scent profiles..."):
                 temp, desc = get_weather(city)
                 if temp is not None:
                     try:
                         image_parts = [types.Part.from_bytes(data=f.getvalue(), mime_type=f.type) for f in uploaded_files]
-                        prompt = f"Weather: {temp}C, {desc}. Occasion: {occasion}. Dictionary: {PH_SCENT_MAP}. Identify all bottles. Format: ---PERFUME--- NAME: [Name] VERDICT: [GOOD CHOICE/NOT RECOMMENDED] PROFILE: [Profile] REASON: [Why] ---END---"
-                        response = client.models.generate_content(model="gemini-2.5-flash-lite", contents=image_parts + [prompt])
+                        
+                        # Pinatinding Prompt Engineering para sa Complete Deep Scent Profile Analytics
+                        prompt = f"""
+                        Current Weather Status: {temp}°C, {desc}. 
+                        Target Lifestyle Occasion: {occasion}. 
+                        
+                        Local Brand Clone Dictionary Map: {PH_SCENT_MAP}
+
+                        YOUR MISSION:
+                        1. Identify all perfume bottles present in the images.
+                        2. If the bottle is a local brand clone found in the Dictionary Map (e.g., Cotidiano, Symmetry Labs, Father and Son, Enzo Scents, D'Matteos), you MUST explicitly state what luxury designer perfume it is inspired by based on the dictionary.
+                        3. Use your internal knowledge or Google Search to find the exact Fragrance Notes (Top Notes, Middle/Heart Notes, and Base Notes) of that specific perfume.
+                        4. Evaluate if the perfume's scent profile matches BOTH the current weather temperature ({temp}°C) AND the lifestyle occasion ({occasion}).
+
+                        CRITICAL EXTRACTION FORMAT:
+                        You must split each detected perfume strictly using this exact structural layout:
+                        
+                        ---PERFUME---
+                        NAME: [Write Full Brand and Scent Name here]
+                        INSPIRED_BY: [Write the Original Luxury Designer Scent inspiration here, or "Original Release" if it is already the designer bottle]
+                        NOTES: [List down the key Top, Middle, and Base Notes here clearly]
+                        VERDICT: [Write either GOOD CHOICE or NOT RECOMMENDED here]
+                        PROFILE: [Write a summary of its overall vibe, silage, and performance category here]
+                        REASON: [Explain scientifically/contextually why it fits or conflicts with the {temp}°C weather and {occasion} occasion here]
+                        ---END---
+                        """
+                        
+                        # Pagpapadala sa Gemini kasama ang bagong ultra-detailed prompt structural template
+                        response = client.models.generate_content(
+                            model="gemini-2.5-flash-lite", 
+                            contents=image_parts + [prompt]
+                        )
                         
                         st.session_state.weather_info = f"Weather in {city}: {temp}°C, {desc.capitalize()}"
                         parsed_perfumes = []
+                        
+                        # Pagsasala sa bagong structural blocks kasama ang Notes at Inspirations
                         for block in response.text.split("---PERFUME---"):
                             if "---END---" in block:
                                 clean_block = block.split("---END---")[0].strip()
-                                name, verdict, profile, reason = "Unknown Scent", "N/A", "N/A", "N/A"
+                                name, inspired_by, notes, verdict, profile, reason = "Unknown Scent", "N/A", "N/A", "N/A", "N/A", "N/A"
+                                
                                 for line in clean_block.split("\n"):
-                                    if line.strip().startswith("NAME:"): name = line.replace("NAME:", "").strip()
-                                    elif line.strip().startswith("VERDICT:"): verdict = line.replace("VERDICT:", "").strip()
-                                    elif line.strip().startswith("PROFILE:"): profile = line.replace("PROFILE:", "").strip()
-                                    elif line.strip().startswith("REASON:"): reason = line.replace("REASON:", "").strip()
-                                parsed_perfumes.append({"name": name, "verdict": verdict, "profile": profile, "reason": reason})
+                                    line_str = line.strip()
+                                    if line_str.startswith("NAME:"): 
+                                        name = line.replace("NAME:", "").strip()
+                                    elif line_str.startswith("INSPIRED_BY:"): 
+                                        inspired_by = line.replace("INSPIRED_BY:", "").strip()
+                                    elif line_str.startswith("NOTES:"): 
+                                        notes = line.replace("NOTES:", "").strip()
+                                    elif line_str.startswith("VERDICT:"): 
+                                        verdict = line.replace("VERDICT:", "").strip()
+                                    elif line_str.startswith("PROFILE:"): 
+                                        profile = line.replace("PROFILE:", "").strip()
+                                    elif line_str.startswith("REASON:"): 
+                                        reason = line.replace("REASON:", "").strip()
+                                
+                                parsed_perfumes.append({
+                                    "name": name, 
+                                    "inspired_by": inspired_by,
+                                    "notes": notes,
+                                    "verdict": verdict, 
+                                    "profile": profile, 
+                                    "reason": reason
+                                })
+                                
                                 if "GOOD" in verdict.upper():
-                                    st.session_state.scent_history.append({"perfume": name, "date": datetime.now().strftime("%b %d, %I:%M %p"), "occasion": occasion, "verdict": reason})
+                                    st.session_state.scent_history.append({
+                                        "perfume": name, 
+                                        "date": datetime.now().strftime("%b %d, %I:%M %p"), 
+                                        "occasion": occasion, 
+                                        "verdict": f"Inspired by: {inspired_by} | {reason}"
+                                    })
                         st.session_state.active_analysis = parsed_perfumes
                         st.rerun()
                     except Exception as e:
-                        st.error(f"An error occurred: {e}")
+                        st.error(f"An error occurred during prompt mapping processing: {e}")
 
     if st.session_state.active_analysis:
         st.success(st.session_state.weather_info)
         for p in st.session_state.active_analysis:
             status_badge = "🟢" if "GOOD" in p['verdict'].upper() else "🚨"
             with st.expander(f"{status_badge} {p['name']} — {p['verdict']}"):
-                st.markdown(f"**Scent Profile:** {p['profile']}\n\n**Weather Assessment:** {p['reason']}")
+                st.markdown(f"✨ **Inspired By:** {p['inspired_by']}")
+                st.markdown(f"🌿 **Fragrance Notes Breakdown:** {p['notes']}")
+                st.markdown(f"🧪 **Scent Profile Character:** {p['profile']}")
+                st.markdown(f"📊 **Contextual Assessment:** {p['reason']}")
 
 with perfume_col:
     # --- PHOTOREALISTIC BASE64 LOCAL VAULT FRAME WITH ANTI-SPAM AUDIO ENGINE ---
