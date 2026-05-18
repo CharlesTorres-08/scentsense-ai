@@ -183,3 +183,43 @@ st.markdown(
     <div style='background-color: rgba(15, 15, 20, 0.85); backdrop-filter: blur(10px); padding: 22px; border-radius: 12px; margin-bottom: 25px; border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0px 4px 15px rgba(0,0,0,0.3);'>
         <h1 style='color: #FFFFFF; margin: 0; font-size: 2.3rem; font-weight: 700;'>💨 ScentSense AI</h1>
         <p style='color: #CCCCCC; margin: 6px 0 0 0; font-size: 1.05rem;'>A Context-Aware Fragrance Selection Agent</p>
+    </div>
+    """, 
+    unsafe_allow_html=True
+)
+
+city = st.text_input("📍 Where are you right now?", placeholder="e.g., Lipa City, PH")
+
+occasion = st.selectbox(
+    "🎯 What is the occasion/vibe for today?",
+    ["Casual / Daily Wear", "Office / School / Professional", "Date Night / Romantic", "Gym / Sports / Activewear", "Formal Event / Wedding"]
+)
+
+uploaded_files = st.file_uploader("📸 Upload photos of your perfumes", type=["jpg", "png", "jpeg"], accept_multiple_files=True)
+
+if st.button("🚀 Find My Scent", use_container_width=True):
+    if not uploaded_files or not city:
+        st.warning("Please provide both your city and at least one perfume photo!")
+    else:
+        with st.spinner("Analyzing your fragrance collection..."):
+            temp, desc = get_weather(city)
+            if temp is None:
+                st.error(f"Weather Error: {desc}")
+            else:
+                try:
+                    image_parts = []
+                    for uploaded_file in uploaded_files:
+                        bytes_data = uploaded_file.getvalue()
+                        image_parts.append(types.Part.from_bytes(data=bytes_data, mime_type=uploaded_file.type))
+
+                    prompt = f"""
+                    Current Weather in {city}: {temp}°C, {desc}.
+                    Target Occasion/Vibe: {occasion}.
+                    Local Scent Map: {PH_SCENT_MAP}
+
+                    Analyze the uploaded perfume bottles. Identify all of them.
+                    For PH local brands, reference the Map. Use Google Search grounding to verify notes.
+
+                    Evaluate each perfume. A 'GOOD CHOICE' must fit BOTH the {temp}°C weather AND the '{occasion}' setting.
+                    
+                    For EVERY perfume bottle detected, you must output its details exactly using this block format:
