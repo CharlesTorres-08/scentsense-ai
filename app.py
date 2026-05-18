@@ -1,286 +1,198 @@
 import streamlit as st
-import os
 import requests
+import os
 import base64
 from datetime import datetime
-from dotenv import load_dotenv
 from google import genai
 from google.genai import types
+from pydantic import BaseModel, Field
+from typing import List
 import streamlit.components.v1 as components
 
-# 1. LOAD CONFIGURATION
-load_dotenv()
+# --- 1. INITIAL SETUP & CONFIGURATION ---
+st.set_page_config(
+    page_title="ScentSense AI — Smart Fragrance Selection Agent",
+    page_icon="🔮",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-GEMINI_KEY = os.getenv("GEMINI_API_KEY")
-WEATHER_KEY = os.getenv("WEATHER_API_KEY")
+# Initialize Gemini Client (Uses GEMINI_API_KEY from environment or .env)
+# Para sa Streamlit Cloud, ilagay ito sa Settings > Secrets
+if "GEMINI_API_KEY" in st.secrets:
+    os.environ["GEMINI_API_KEY"] = st.secrets["GEMINI_API_KEY"]
 
-if not GEMINI_KEY or not WEATHER_KEY:
-    st.error("🚨 API Keys are missing! Check your .env file or Streamlit Secrets.")
-    st.stop()
+try:
+    client = genai.Client()
+except Exception as e:
+    st.error("⚠️ Gemini API Key missing or misconfigured. Please check your setup.")
 
-# Initialize Gemini Client
-client = genai.Client(api_key=GEMINI_KEY)
+# --- 2. LOCAL BRANDS SCENT DICTIONARY MAP ---
+PH_SCENT_MAP = {
+    "Cotidiano": {
+        "Debonair": "Jean Paul Gaultier Le Male Elixir",
+        "Choco Carnival": "Montale Chocolate Greedy",
+        "Amalfi Coast": "Tom Ford Neroli Portofino",
+        "White Silk": "Maison Francis Kurkdjian 724",
+        "Suede & Saffron": "Tom Ford Tuscan Leather"
+    },
+    "Symmetry Labs": {
+        "Tiger Eye": "Bvlgari Tygar",
+        "L'Homme": "Yves Saint Laurent L'Homme",
+        "Elysian": "Roja Elysium",
+        "Altum": "香奈儿 Bleu de Chanel"
+    },
+    "Father and Son": {
+        "King": "Creed Aventus",
+        "Suave": "Dior Sauvage",
+        "Spectre": "Viktor & Rolf Spicebomb Extreme"
+    }
+}
 
-# Initialize Session State Memory
+# --- 3. SESSION STATE ENGINE ---
 if "scent_history" not in st.session_state:
     st.session_state.scent_history = []
 if "active_analysis" not in st.session_state:
     st.session_state.active_analysis = None
 if "weather_info" not in st.session_state:
-    st.session_state.weather_info = None
+    st.session_state.weather_info = ""
 
-# Helper function para i-convert ang local image mo patungong safe HTML data stream
-def get_base64_image(image_path):
-    if os.path.exists(image_path):
-        with open(image_path, "rb") as img_file:
-            return f"data:image/png;base64,{base64.b64encode(img_file.read()).decode()}"
+# --- 4. STRUCTURED DATA SCHEMAS FOR GEMINI ---
+class PerfumeAnalysis(BaseModel):
+    name: str = Field(description="The full brand and scent name of the identified bottle.")
+    inspired_by: str = Field(description="The original luxury designer perfume this clone is inspired by based on the dictionary. If original designer, write 'Original Designer Release'.")
+    notes: str = Field(description="Detailed breakdown of Top Notes, Heart Notes, and Base Notes.")
+    verdict: str = Field(description="Strictly write either 'GOOD CHOICE' or 'NOT RECOMMENDED'.")
+    profile: str = Field(description="Summary of the scent's character, vibe, and longevity.")
+    reason: str = Field(description="Contextual explanation on why it fits or conflicts with the current weather temperature and occasion.")
+
+class FragranceResponse(BaseModel):
+    perfumes: List[PerfumeAnalysis]
+
+# --- 5. HELPER FUNCTIONS ---
+def get_weather(city_name):
+    """Fetches real-time weather usingwttr.in (No API Key Required)"""
+    try:
+        url = f"https://wttr.in/{city_name}?format=%t+%C"
+        res = requests.get(url, timeout=5)
+        if res.status_code == 200 and "鋪" not in res.text:
+            parts = res.text.strip().split()
+            if parts:
+                temp_str = "".join([c for c in parts[0] if c.isdigit() or c in ['-', '+']])
+                condition = " ".join(parts[1:])
+                return int(temp_str), condition
+        return 29, "Partly Cloudy"  # Smart default for PH weather
+    except:
+        return 29, "Partly Cloudy"
+
+def load_image_as_base64(path):
+    """Encodes asset PNG files into Base64 injectors for HTML frame injection"""
+    if os.path.exists(path):
+        with open(path, "rb") as f:
+            return f"data:image/png;base64,{base64.b64encode(f.read()).decode()}"
     return ""
 
-# I-convert ang mga local files mo
-jpg_base64 = get_base64_image("jpg_elixir.png")
-bdc_base64 = get_base64_image("bdc.png")
+# Pre-load localized background transparent spray canisters
+jpg_base64 = load_image_as_base64("jpg_elixir.png")
+bdc_base64 = load_image_as_base64("bdc.png")
 
-# 2. LOCAL BRAND KNOWLEDGE BASE
-PH_SCENT_MAP = {
-    "Cotidiano - Silver": "Gentle Fluidity Silver (Fresh, Metallic, Gin)",
-    "Cotidiano - Mango Venom": "God of Fire (Mango, Tropical, Sweet)",
-    "Cotidiano - D'Iconic": "Bleu de Chanel EDP",
-    "Symmetry Labs - Sronger Flame": "Stronger with You Intensely",
-    "Symmetry Labs - Diver": "LV Afternoon Swim (Mandarin, Orange, Bright)",
-    "Father and Son - Achilles": "Stronger with You Intensely",
-    "Father and Son - Debonair": "JPG Le Male Elixir (Sweet, Honey, Tobacco)",
-    "Prime Monkeys - Poseidon": "LV Pacific Chill",
-    "Elite Fragrances - Azure": "Bleu De Chanel EDP",
-    "Fragrance World - Suits" : "YSL Tuxedo",
-    "AHMED - KAAF" : "PDM Percival",
-    "Enzo Scents - BIRI" : "Valentino Born in Roma Intense",
-    "Enzo Scents - Blue Talisman" : "Ex Nihilo Blue Talisman",
-    "D'Matteos - DREAMCHASER" : "LV Imagination"
-}
+# --- 6. USER INTERFACE LAYOUT (UI) ---
+st.title("🔮 ScentSense AI")
+st.caption("A Context-Aware Fragrance Selection Agent & Olfactory Intelligence Platform")
 
-# 3. BACKGROUND FUNCTION WITH UI OVERRIDES
-def set_bg_from_url():
-    st.markdown(
-        """
-        <style>
-        .stApp {
-            background-image: url("https://i.pinimg.com/736x/2c/09/04/2c0904aed6688401670f8921b29af288.jpg");
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
-        }
-        
-        .stTextInput, .stSelectbox, div[data-testid="stFileUploader"] {
-            background-color: rgba(255, 255, 255, 0.9) !important;
-            padding: 14px;
-            border-radius: 12px;
-            margin-bottom: 12px;
-            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.15);
-        }
-        
-        div[data-testid="stWidgetLabel"] p, label p {
-            color: #000000 !important;
-            font-weight: bold !important;
-        }
-        
-        .stTextInput input, .stSelectbox div[data-baseweb="select"] {
-            color: #000000 !important;
-            background-color: #FFFFFF !important;
-        }
+left_col, right_col = st.columns([1, 1], gap="large")
 
-        div[data-testid="stFileUploaderDropzone"] {
-            background-color: #1E1E24 !important;
-            border-radius: 8px;
-        }
-        div[data-testid="stFileUploaderDropzone"] * {
-            color: #E0E0E0 !important;
-        }
-        div[data-testid="stFileUploaderDropzone"] svg {
-            fill: #FFFFFF !important;
-        }
-        
-        .stExpander {
-            background-color: #1E1E24 !important;
-            border: 1px solid rgba(255, 255, 255, 0.1) !important;
-            border-radius: 10px !important;
-            margin-bottom: 10px;
-        }
-        .stExpander summary, .stExpander summary span, .stExpander summary p {
-            color: #FFFFFF !important;
-            font-weight: 600 !important;
-        }
-        
-        div[data-testid="stExpanderDetails"] {
-            background-color: #121214 !important;
-            padding: 15px !important;
-        }
-        div[data-testid="stExpanderDetails"] p, div[data-testid="stExpanderDetails"] strong {
-            color: #FFFFFF !important;
-        }
-        
-        section[data-testid="stSidebar"] {
-            background-color: rgba(20, 20, 25, 0.95) !important;
-            border-right: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .stButton button {
-            background-color: #1E1E24 !important;
-            color: #FFFFFF !important;
-            border: 1px solid rgba(255, 255, 255, 0.2) !important;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True
+with left_col:
+    st.subheader("📋 Input parameters")
+    
+    city = st.text_input("📍 Where are you right now?", placeholder="e.g., Lipa City, PH", help="Used to automatically calculate localized weather-to-scent ratios.")
+    
+    occasion = st.selectbox(
+        "🎯 What is the occasion/vibe for today?",
+        ["Casual / Daily Wear", "Office / School Setting", "Formal Night Gala", "Gym / High-Intensity Workout", "Intimate Date Night", "Clubbing / Nightlife Party"]
     )
-
-# 4. WEATHER TOOL
-def get_weather(city_name):
-    base_url = "http://api.openweathermap.org/data/2.5/weather"
-    params = {"q": city_name, "appid": WEATHER_KEY, "units": "metric"}
-    try:
-        response = requests.get(base_url, params=params)
-        data = response.json()
-        if response.status_code == 200:
-            return data['main']['temp'], data['weather'][0]['description']
-        return None, data.get("message", "City not found")
-    except Exception as e:
-        return None, str(e)
-
-# 5. APP UI LAYOUT SETUP
-st.set_page_config(page_title="ScentSense AI", page_icon=":material/air:", layout="wide")
-set_bg_from_url()
-
-# --- SIDEBAR ---
-with st.sidebar:
-    st.markdown("### 📜 Scent History")
-    if not st.session_state.scent_history:
-        st.info("No recommendations saved yet.")
-    else:
-        for item in reversed(st.session_state.scent_history):
-            st.markdown(f"**🌟 {item['perfume']}**")
-            st.caption(f"📅 {item['date']} | 🎯 {item['occasion']}")
-            st.markdown(f"*{item['verdict']}*")
-            st.markdown("---")
-        if st.button("🗑️ Clear History", use_container_width=True):
-            st.session_state.scent_history, st.session_state.active_analysis, st.session_state.weather_info = [], None, None
-            st.rerun()
-
-# --- MAIN COLUMNS ---
-main_col, perfume_col = st.columns([2.8, 1.6], gap="large")
-
-with main_col:
-    st.markdown(
-        """
-        <div style='background-color: rgba(15, 15, 20, 0.85); backdrop-filter: blur(10px); padding: 22px; border-radius: 12px; margin-bottom: 25px; border: 1px solid rgba(255, 255, 255, 0.1);'>
-            <h1 style='color: #FFFFFF; margin: 0; font-size: 2.3rem; font-weight: 700;'>💨 ScentSense AI</h1>
-            <p style='color: #CCCCCC; margin: 6px 0 0 0; font-size: 1.05rem;'>A Context-Aware Fragrance Selection Agent</p>
-        </div>
-        """, 
-        unsafe_allow_html=True
+    
+    uploaded_files = st.file_uploader(
+        "📸 Upload photos of your perfumes", 
+        type=["jpg", "jpeg", "png"], 
+        accept_multiple_files=True,
+        help="Upload clear photos of your perfume bottles. AI will cross-examine local clones."
     )
-
-    city = st.text_input("📍 Where are you right now?", placeholder="e.g., Lipa City, PH")
-    occasion = st.selectbox("🎯 What is the occasion/vibe for today?", ["Casual / Daily Wear", "Office / School / Professional", "Date Night / Romantic", "Gym / Sports / Activewear", "Formal Event / Wedding"])
-    uploaded_files = st.file_uploader("📸 Upload photos of your perfumes", type=["jpg", "png", "jpeg"], accept_multiple_files=True)
-
+    
+    # --- TRIGGER AND COMPUTATION CONTROL VALVE ---
     if st.button("🚀 Find My Scent", use_container_width=True):
         if not uploaded_files or not city:
             st.warning("Please provide both your city and at least one perfume photo!")
         else:
-            with st.spinner("Analyzing your fragrance collection and searching scent profiles..."):
+            with st.spinner("Analyzing bottles and pulling exact olfactory profiles..."):
                 temp, desc = get_weather(city)
                 if temp is not None:
                     try:
                         image_parts = [types.Part.from_bytes(data=f.getvalue(), mime_type=f.type) for f in uploaded_files]
                         
-                        # Pinatinding Prompt Engineering para sa Complete Deep Scent Profile Analytics
-                        prompt = f"""
-                        Current Weather Status: {temp}°C, {desc}. 
-                        Target Lifestyle Occasion: {occasion}. 
+                        system_instruction = f"""
+                        You are an expert fragrance sommelier agent. Your task is to identify the perfume bottles from the images.
                         
-                        Local Brand Clone Dictionary Map: {PH_SCENT_MAP}
+                        CROSS-REFERENCE DICTIONARY:
+                        {PH_SCENT_MAP}
 
-                        YOUR MISSION:
-                        1. Identify all perfume bottles present in the images.
-                        2. If the bottle is a local brand clone found in the Dictionary Map (e.g., Cotidiano, Symmetry Labs, Father and Son, Enzo Scents, D'Matteos), you MUST explicitly state what luxury designer perfume it is inspired by based on the dictionary.
-                        3. Use your internal knowledge or Google Search to find the exact Fragrance Notes (Top Notes, Middle/Heart Notes, and Base Notes) of that specific perfume.
-                        4. Evaluate if the perfume's scent profile matches BOTH the current weather temperature ({temp}°C) AND the lifestyle occasion ({occasion}).
-
-                        CRITICAL EXTRACTION FORMAT:
-                        You must split each detected perfume strictly using this exact structural layout:
-                        
-                        ---PERFUME---
-                        NAME: [Write Full Brand and Scent Name here]
-                        INSPIRED_BY: [Write the Original Luxury Designer Scent inspiration here, or "Original Release" if it is already the designer bottle]
-                        NOTES: [List down the key Top, Middle, and Base Notes here clearly]
-                        VERDICT: [Write either GOOD CHOICE or NOT RECOMMENDED here]
-                        PROFILE: [Write a summary of its overall vibe, silage, and performance category here]
-                        REASON: [Explain scientifically/contextually why it fits or conflicts with the {temp}°C weather and {occasion} occasion here]
-                        ---END---
+                        CRITICAL DIRECTIONS:
+                        1. Match any local clone brand found in the image to its original luxury inspiration using the dictionary provided.
+                        2. Look up or recall the exact olfactory notes (Top, Middle, and Base notes) for each perfume.
+                        3. Evaluate if the scent profile is appropriate for {temp}°C weather and a '{occasion}' vibe.
                         """
-                        
-                        # Pagpapadala sa Gemini kasama ang bagong ultra-detailed prompt structural template
+
                         response = client.models.generate_content(
-                            model="gemini-2.5-flash-lite", 
-                            contents=image_parts + [prompt]
+                            model="gemini-2.5-flash-lite",
+                            contents=image_parts + ["Analyze the perfumes in the image."],
+                            config=types.GenerateContentConfig(
+                                system_instruction=system_instruction,
+                                response_mime_type="application/json",
+                                response_schema=FragranceResponse,
+                                temperature=0.2
+                            )
                         )
                         
-                        st.session_state.weather_info = f"Weather in {city}: {temp}°C, {desc.capitalize()}"
-                        parsed_perfumes = []
+                        import json
+                        raw_data = json.loads(response.text)
+                        parsed_perfumes = raw_data.get("perfumes", [])
                         
-                        # Pagsasala sa bagong structural blocks kasama ang Notes at Inspirations
-                        for block in response.text.split("---PERFUME---"):
-                            if "---END---" in block:
-                                clean_block = block.split("---END---")[0].strip()
-                                name, inspired_by, notes, verdict, profile, reason = "Unknown Scent", "N/A", "N/A", "N/A", "N/A", "N/A"
-                                
-                                for line in clean_block.split("\n"):
-                                    line_str = line.strip()
-                                    if line_str.startswith("NAME:"): 
-                                        name = line.replace("NAME:", "").strip()
-                                    elif line_str.startswith("INSPIRED_BY:"): 
-                                        inspired_by = line.replace("INSPIRED_BY:", "").strip()
-                                    elif line_str.startswith("NOTES:"): 
-                                        notes = line.replace("NOTES:", "").strip()
-                                    elif line_str.startswith("VERDICT:"): 
-                                        verdict = line.replace("VERDICT:", "").strip()
-                                    elif line_str.startswith("PROFILE:"): 
-                                        profile = line.replace("PROFILE:", "").strip()
-                                    elif line_str.startswith("REASON:"): 
-                                        reason = line.replace("REASON:", "").strip()
-                                
-                                parsed_perfumes.append({
-                                    "name": name, 
-                                    "inspired_by": inspired_by,
-                                    "notes": notes,
-                                    "verdict": verdict, 
-                                    "profile": profile, 
-                                    "reason": reason
-                                })
-                                
-                                if "GOOD" in verdict.upper():
-                                    st.session_state.scent_history.append({
-                                        "perfume": name, 
-                                        "date": datetime.now().strftime("%b %d, %I:%M %p"), 
-                                        "occasion": occasion, 
-                                        "verdict": f"Inspired by: {inspired_by} | {reason}"
-                                    })
+                        st.session_state.weather_info = f"Weather in {city}: {temp}°C, {desc.capitalize()}"
                         st.session_state.active_analysis = parsed_perfumes
+                        
+                        # Save successful recommendations to system cache log
+                        for p in parsed_perfumes:
+                            if "GOOD" in p['verdict'].upper():
+                                st.session_state.scent_history.append({
+                                    "perfume": p['name'],
+                                    "date": datetime.now().strftime("%b %d, %I:%M %p"),
+                                    "occasion": occasion,
+                                    "verdict": f"Inspired by: {p['inspired_by']} | {p['reason']}"
+                                })
+                        
                         st.rerun()
                     except Exception as e:
-                        st.error(f"An error occurred during prompt mapping processing: {e}")
+                        st.error(f"Error mapping fragrance data layer: {e}")
 
+    # --- RENDER EXPERT DISCOVERY REPORTS ---
     if st.session_state.active_analysis:
+        st.write("---")
+        st.subheader("📊 Your Fragrance Analysis Breakdown")
         st.success(st.session_state.weather_info)
+        
         for p in st.session_state.active_analysis:
             status_badge = "🟢" if "GOOD" in p['verdict'].upper() else "🚨"
+            
             with st.expander(f"{status_badge} {p['name']} — {p['verdict']}"):
-                st.markdown(f"✨ **Inspired By:** {p['inspired_by']}")
-                st.markdown(f"🌿 **Fragrance Notes Breakdown:** {p['notes']}")
-                st.markdown(f"🧪 **Scent Profile Character:** {p['profile']}")
-                st.markdown(f"📊 **Contextual Assessment:** {p['reason']}")
+                st.markdown(f"✨ **Inspired By:** `{p['inspired_by']}`")
+                st.markdown(f"🌿 **Fragrance Notes Breakdown:**\n{p['notes']}")
+                st.markdown(f"🧪 **Scent Profile Character:**\n{p['profile']}")
+                st.markdown(f"📊 **Contextual Assessment:**\n{p['reason']}")
 
-with perfume_col:
+with right_col:
+    # --- SIDE CONSOLE / INTERACTIVE LAYER ---
+    st.subheader("🧪 Interactive Scent Deck")
+    
     # --- PHOTOREALISTIC BASE64 LOCAL VAULT FRAME WITH ANTI-SPAM AUDIO ENGINE ---
     if jpg_base64 and bdc_base64:
         html_code = f"""
@@ -300,7 +212,7 @@ with perfume_col:
                 flex-direction: column;
                 align-items: center;
                 justify-content: center;
-                height: 100vh;
+                height: 45vh;
                 position: relative;
                 padding-right: 20px;
             }}
@@ -318,7 +230,7 @@ with perfume_col:
                 flex-direction: row;
                 align-items: flex-end;
                 justify-content: center;
-                gap: 25px;
+                gap: 35px;
                 position: relative;
                 margin-top: 20px;
             }}
@@ -334,8 +246,8 @@ with perfume_col:
                 -webkit-user-drag: none;
                 user-select: none;
             }}
-            .img-jpg {{ height: 230px; }}
-            .img-bdc {{ height: 205px; }}
+            .img-jpg {{ height: 210px; }}
+            .img-bdc {{ height: 185px; }}
 
             .perfume-item:active .real-bottle {{
                 transform: scale(0.94) translateY(4px);
@@ -483,5 +395,15 @@ with perfume_col:
         </body>
         </html>
         """
-        components.html(html_code, height=360, scrolling=False)
-  
+        components.html(html_code, height=340, scrolling=False)
+    else:
+        st.warning("⚠️ Pakisiguradong nailagay mo na ang 'jpg_elixir.png' at 'bdc.png' sa iyong project folder para lumitaw ang mga bote nang walang white background.")
+
+    # --- HISTORICAL SCENT TIMELINE REEL ---
+    st.write("---")
+    st.subheader("📜 Scent Selection History")
+    if st.session_state.scent_history:
+        for item in reversed(st.session_state.scent_history):
+            st.info(f"✨ **{item['perfume']}** — *{item['occasion']}*\n\n📅 {item['date']} | {item['verdict']}")
+    else:
+        st.caption("No historical spray captures saved yet. Fire an engine discovery scan above!")
