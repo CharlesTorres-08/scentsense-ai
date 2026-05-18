@@ -36,11 +36,12 @@ PH_SCENT_MAP = {
     "D'Matteos - DREAMCHASER" : "LV Imagination"
 }
 
-# 3. BACKGROUND FUNCTION WITH BALANCED CSS CONTRAST OVERRIDES
+# 3. BACKGROUND FUNCTION WITH FROSTED DARK GLASS THEME
 def set_bg_from_url():
     st.markdown(
         f"""
         <style>
+        /* Base page background configuration */
         .stApp {{
             background-image: url("https://i.pinimg.com/736x/2c/09/04/2c0904aed6688401670f8921b29af288.jpg");
             background-size: cover;
@@ -48,55 +49,44 @@ def set_bg_from_url():
             background-attachment: fixed;
         }}
         
-        /* Glassmorphism card wrappers */
-        .stMarkdown, .stTextInput, .stCaption, .stExpander, div[data-testid="stFileUploader"] {{
-            background-color: rgba(255, 255, 255, 0.92) !important;
-            padding: 12px;
+        /* FROSTED DARK GLASS CARD SHIELDS
+           Forces containers into dark glass so all native light text pops perfectly 
+        */
+        .stMarkdown, .stTextInput, .stCaption, .stExpander, div[data-testid="stFileUploader"], .stAlert {{
+            background-color: rgba(20, 20, 25, 0.75) !important;
+            backdrop-filter: blur(10px);
+            padding: 14px;
             border-radius: 12px;
             margin-bottom: 12px;
-            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
         }}
         
-        /* 1. Target general structural texts */
-        .stApp label, .stApp p, .stApp span {{
-            color: #1A1A1A !important;
-        }}
-        
-        /* 2. Target specific widget titles */
-        div[data-testid="stWidgetLabel"] p {{
-            color: #000000 !important;
+        /* Explicitly guarantee primary header labels are a crisp white */
+        div[data-testid="stWidgetLabel"] p, .stApp label p {{
+            color: #FFFFFF !important;
             font-weight: 600 !important;
+            text-shadow: 0px 2px 4px rgba(0,0,0,0.5);
         }}
         
-        /* 3. PROTECT FILE UPLOADER BUTTONS AND INTERNAL BLOCKS */
-        div[data-testid="stFileUploaderDropzone"] {{
-            background-color: #1E1E24 !important; /* Forces a stable dark background */
+        /* Smooth styling integration for the action button */
+        .stButton button {{
+            background-color: #1E1E24 !important;
+            color: #FFFFFF !important;
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+            transition: all 0.3s ease;
+        }}
+        .stButton button:hover {{
+            background-color: #32323D !important;
+            border-color: #FFFFFF !important;
+            box-shadow: 0px 0px 12px rgba(255,255,255,0.2);
+        }}
+        
+        /* Dropdown content block customization */
+        div[data-testid="stExpanderDetails"] {{
+            background-color: rgba(30, 30, 35, 0.9) !important;
             border-radius: 8px;
-        }}
-        /* Keep all texts inside the drag-and-drop zone a light, bright grey */
-        div[data-testid="stFileUploaderDropzone"] * {{
-            color: #E0E0E0 !important;
-        }}
-        /* Ensure button icon explicitly uses light styling */
-        div[data-testid="stFileUploaderDropzone"] svg {{
-            fill: #FFFFFF !important;
-        }}
-        
-        /* 4. Expander headers and layout blocks */
-        .stExpander summary, .stExpander summary span, .stExpander summary p {{
-            color: #000000 !important;
-            font-weight: bold !important;
-        }}
-        
-        div[data-testid="stExpanderDetails"] p, div[data-testid="stExpanderDetails"] {{
-            color: #222222 !important;
-            background-color: #FFFFFF !important;
-        }}
-        
-        /* 5. Input text normalization */
-        .stTextInput input {{
-            color: #000000 !important;
-            background-color: #FFFFFF !important;
+            padding: 15px;
+            color: #F0F0F0 !important;
         }}
         </style>
         """,
@@ -123,12 +113,12 @@ st.set_page_config(
 )
 set_bg_from_url()
 
-# Custom Header Section
+# Custom Header Section matching the luxury dark aesthetic
 st.markdown(
     """
-    <div style='background-color: rgba(255, 255, 255, 0.95); padding: 20px; border-radius: 12px; margin-bottom: 20px; border-left: 5px solid #1A1A1A;'>
-        <h1 style='color: #000000; margin: 0; font-size: 2.2rem; font-weight: 700;'>💨 ScentSense AI</h1>
-        <p style='color: #444444; margin: 6px 0 0 0; font-size: 1.05rem; font-weight: 500;'>A Context-Aware Fragrance Selection Agent</p>
+    <div style='background-color: rgba(15, 15, 20, 0.8); backdrop-filter: blur(10px); padding: 22px; border-radius: 12px; margin-bottom: 25px; border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0px 4px 15px rgba(0,0,0,0.3);'>
+        <h1 style='color: #FFFFFF; margin: 0; font-size: 2.3rem; font-weight: 700; letter-spacing: -0.5px;'>💨 ScentSense AI</h1>
+        <p style='color: #CCCCCC; margin: 6px 0 0 0; font-size: 1.05rem; font-weight: 400;'>A Context-Aware Fragrance Selection Agent</p>
     </div>
     """, 
     unsafe_allow_html=True
@@ -178,7 +168,7 @@ if st.button("🚀 Find My Scent", use_container_width=True):
                     
                     st.success(f"Weather in {city}: {temp}°C, {desc.capitalize()}")
                     
-                    st.markdown(f"<h3 style='color: #000000; margin-top: 15px; font-weight: 700;'>🔮 Your Fragrance Analysis Breakdown</h3>", unsafe_allow_html=True)
+                    st.markdown(f"<h3 style='color: #FFFFFF; margin-top: 20px; font-weight: 700; text-shadow: 0px 2px 4px rgba(0,0,0,0.4);'>🔮 Your Fragrance Analysis Breakdown</h3>", unsafe_allow_html=True)
                     
                     # 6. LAYOUT BREAKDOWN PARSER
                     raw_text = response.text
@@ -203,9 +193,9 @@ if st.button("🚀 Find My Scent", use_container_width=True):
                             
                             status_badge = "🟢" if "GOOD" in verdict.upper() else "🚨"
                             
-                            with st.expander(f"{status_badge} **{name}** — *{verdict}*"):
-                                st.markdown(f"**Scent Profile:** {profile}")
-                                st.markdown(f"**Weather Assessment:** {reason}")
+                            with st.expander(f"{status_badge} {name} — {verdict}"):
+                                st.write(f"**Scent Profile:** {profile}")
+                                st.write(f"**Weather Assessment:** {reason}")
                                 
                     if not detected_any:
                         st.markdown(raw_text)
