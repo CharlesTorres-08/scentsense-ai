@@ -36,7 +36,7 @@ PH_SCENT_MAP = {
     "D'Matteos - DREAMCHASER" : "LV Imagination"
 }
 
-# 3. BACKGROUND FUNCTION (Pinterest URL)
+# 3. BACKGROUND FUNCTION (Pinterest URL with Dark Text Contrast)
 def set_bg_from_url():
     st.markdown(
         f"""
@@ -47,15 +47,23 @@ def set_bg_from_url():
             background-position: center;
             background-attachment: fixed;
         }}
-        /* Glassmorphism styling for text and cards to stay readable */
+        /* Frosted glass container shields */
         .stMarkdown, .stTextInput, .stCaption, .stExpander {{
-            background-color: rgba(255, 255, 255, 0.85) !important;
-            padding: 8px;
+            background-color: rgba(255, 255, 255, 0.9) !important;
+            padding: 12px;
             border-radius: 12px;
             margin-bottom: 10px;
         }}
+        /* Force all text inside the panels to be deep charcoal black */
+        .stMarkdown p, .stTextInput label, .stCaption, div[data-testid="stExpanderDetails"] {{
+            color: #1A1A1A !important;
+        }}
+        /* Style the expander header titles explicitly */
+        p[data-testid="stWidgetLabel"], .stExpander summary {{
+            color: #000000 !important;
+        }}
         div[data-testid="stExpanderDetails"] {{
-            background-color: white !important;
+            background-color: #FFFFFF !important;
             border-radius: 8px;
             padding: 15px;
         }}
@@ -84,8 +92,18 @@ st.set_page_config(
 )
 set_bg_from_url()
 
-st.title(":material/air: ScentSense AI")
-st.caption("A Context-Aware Fragrance Selection Agent")
+# Custom Header that balances dark text contrast on the white container shield
+st.markdown(
+    """
+    <div style='background-color: rgba(255, 255, 255, 0.9); padding: 20px; border-radius: 12px; margin-bottom: 20px;'>
+        <h1 style='color: #1A1A1A; margin: 0; display: flex; align-items: center; gap: 10px;'>
+            ScentSense AI
+        </h1>
+        <p style='color: #555555; margin: 5px 0 0 0;'>A Context-Aware Fragrance Selection Agent</p>
+    </div>
+    """, 
+    unsafe_allow_html=True
+)
 
 city = st.text_input("📍 Where are you right now?", placeholder="e.g., Lipa City, PH")
 uploaded_files = st.file_uploader("📸 Upload photos of your perfumes", type=["jpg", "png", "jpeg"], accept_multiple_files=True)
@@ -105,7 +123,7 @@ if st.button("🚀 Find My Scent", use_container_width=True):
                         bytes_data = uploaded_file.getvalue()
                         image_parts.append(types.Part.from_bytes(data=bytes_data, mime_type=uploaded_file.type))
 
-                    # Updated layout prompt using clear delimiters instead of a giant paragraph
+                    # Updated layout prompt
                     prompt = f"""
                     Current Weather in {city}: {temp}°C, {desc}.
                     Local Scent Map: {PH_SCENT_MAP}
@@ -155,7 +173,7 @@ if st.button("🚀 Find My Scent", use_container_width=True):
                                 elif line.startswith("REASON:"):
                                     reason = line.replace("REASON:", "").strip()
                             
-                            # Match recommendations to clean visual visual status indicators
+                            # Match recommendations to clean status indicators
                             status_badge = "🟢" if "GOOD" in verdict.upper() else "🚨"
                             
                             # Render separate clean barriers for each perfume file item
@@ -164,10 +182,9 @@ if st.button("🚀 Find My Scent", use_container_width=True):
                                 st.markdown(f"**Weather Assessment:** {reason}")
                                 
                     if not detected_any:
-                        # Fallback rendering if the parser fails to find clear block format
                         st.markdown(raw_text)
                             
                 except Exception as e:
-                    st.error(f"An error occurred while building the layout layout: {e}")
+                    st.error(f"An error occurred while building the layout: {e}")
 
 st.info("💡 Tip: Clear labels help the AI separate your collection into clean blocks faster.")
