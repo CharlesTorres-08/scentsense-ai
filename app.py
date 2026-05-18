@@ -222,7 +222,7 @@ with main_col:
                 st.markdown(f"**Scent Profile:** {p['profile']}\n\n**Weather Assessment:** {p['reason']}")
 
 with perfume_col:
-    # --- PHOTOREALISTIC BASE64 LOCAL VAULT FRAME ---
+    # --- PHOTOREALISTIC BASE64 LOCAL VAULT FRAME WITH AUDIO ENGINE ---
     html_code = f"""
     <!DOCTYPE html>
     <html>
@@ -321,6 +321,47 @@ with perfume_col:
         </div>
 
         <script>
+        // Synthesize Realistic Scent Atomizer Sound (Generative White Noise)
+        function playSpritzSound() {{
+            try {{
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return;
+                const ctx = new AudioContext();
+                
+                // 1. Create White Noise Waveform Buffer
+                const bufSize = ctx.sampleRate * 0.45; 
+                const buffer = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufSize; i++) {{
+                    data[i] = Math.random() * 2 - 1;
+                }}
+                
+                const noiseSource = ctx.createBufferSource();
+                noiseSource.buffer = buffer;
+                
+                // 2. Highpass Filter to lock in crisp premium air mist pressure
+                const filter = ctx.createBiquadFilter();
+                filter.type = 'highpass';
+                filter.frequency.value = 6000; 
+                
+                // 3. Audio Envelope Curve (Instant punch drop down to soft release)
+                const gain = ctx.createGain();
+                gain.gain.setValueAtTime(0, ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.42);
+                
+                // Audio Connections Pipeline
+                noiseSource.connect(filter);
+                filter.connect(gain);
+                gain.connect(ctx.destination);
+                
+                noiseSource.start();
+                noiseSource.stop(ctx.currentTime + 0.45);
+            }} catch (err) {{
+                console.log("Audio contextual trigger waiting for node focus event", err);
+            }}
+        }}
+
         function triggerSpray(event, type) {{
             const container = event.currentTarget;
             const statusLabel = document.getElementById('status-text');
@@ -331,6 +372,10 @@ with perfume_col:
                 statusLabel.innerText = "Active Spray: Bleu de Chanel";
             }}
             
+            // Execute synthetic mist sound pump
+            playSpritzSound();
+            
+            // Aligned spray release coordinates relative to cap anatomy
             const startX = "50%";
             const startY = type === 'jpg' ? "10px" : "15px";
             
@@ -345,7 +390,7 @@ with perfume_col:
                 p.style.setProperty('--start-x', startX);
                 p.style.setProperty('--start-y', startY);
                 
-                // Gold cloud direction matching the template image (spraying up-left)
+                // Volumetric cloud direction (spraying up-left)
                 const angle = (Math.random() * 40 - 75) * (Math.PI / 180); 
                 const dist = Math.random() * 90 + 75;
                 
