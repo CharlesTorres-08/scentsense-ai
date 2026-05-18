@@ -138,9 +138,8 @@ def set_bg_from_url():
         unsafe_allow_html=True
     )
 
-# 4. WEATHER TOOL (FIXED UNTERMINATED F-STRING ERROR)
+# 4. WEATHER TOOL
 def get_weather(city_name):
-    # Safe multi-line assembly to prevent syntax breaks on line 143
     base_url = "http://api.openweathermap.org/data/2.5/weather"
     params = {
         "q": city_name,
@@ -218,11 +217,22 @@ if st.button("🚀 Find My Scent", use_container_width=True):
                         bytes_data = uploaded_file.getvalue()
                         image_parts.append(types.Part.from_bytes(data=bytes_data, mime_type=uploaded_file.type))
 
-                    # Safely structured prompt variable without string breaking
-                    base_prompt = "Current Weather: {} C, {}. Target Occasion: {}. Scent Reference Map: {}. "
-                    rules_prompt = "Identify and evaluate each perfume image block. For EVERY perfume bottle detected, you must output details exactly using this layout schema: ---PERFUME--- NAME: [Name] VERDICT: [GOOD CHOICE or NOT RECOMMENDED] PROFILE: [Scent notes] REASON: [Short explanation factoring in the weather and setting] ---END---"
-                    
-                    full_prompt = base_prompt.format(temp, desc, occasion, str(PH_SCENT_MAP)) + rules_prompt
+                    # SAFE LINE RE-ASSEMBLY WITH STRICT BLOCK NEWLINES (\n)
+                    prompt_lines = [
+                        f"Current Weather: {temp}C, {desc}.",
+                        f"Target Occasion: {occasion}.",
+                        f"Local Brand Dictionary Map: {PH_SCENT_MAP}",
+                        "Identify all perfume bottles in the images. Reference the dictionary for local clones/inspirations.",
+                        "Evaluate if the perfume matches BOTH the current weather temperature AND the selected lifestyle occasion context.",
+                        "CRITICAL: For every single perfume bottle detected, you MUST output its result split exactly into this format:",
+                        "---PERFUME---",
+                        "NAME: [Write Perfume Brand and Name here]",
+                        "VERDICT: [Write GOOD CHOICE or NOT RECOMMENDED here]",
+                        "PROFILE: [Write short details about its scent profile/vibe here]",
+                        "REASON: [Explain why it fits or does not fit the weather and the chosen occasion context here]",
+                        "---END---"
+                    ]
+                    full_prompt = "\n".join(prompt_lines)
 
                     response = client.models.generate_content(
                         model="gemini-2.5-flash-lite",
@@ -246,17 +256,18 @@ if st.button("🚀 Find My Scent", use_container_width=True):
                             
                             name, verdict, profile, reason = "Unknown Scent", "N/A", "N/A", "N/A"
                             for line in clean_block.split("\n"):
-                                if "NAME:" in line:
+                                if line.strip().startswith("NAME:"):
                                     name = line.replace("NAME:", "").strip()
-                                elif "VERDICT:" in line:
+                                elif line.strip().startswith("VERDICT:"):
                                     verdict = line.replace("VERDICT:", "").strip()
-                                elif "PROFILE:" in line:
+                                elif line.strip().startswith("PROFILE:"):
                                     profile = line.replace("PROFILE:", "").strip()
-                                elif "REASON:" in line:
+                                elif line.strip().startswith("REASON:"):
                                     reason = line.replace("REASON:", "").strip()
                             
                             status_badge = "🟢" if "GOOD" in verdict.upper() else "🚨"
                             
+                            # GORGEOUS DARK DROPDOWN CARD RE-ACTIVATED
                             with st.expander(f"{status_badge} {name} — {verdict}"):
                                 st.markdown(f"**Scent Profile:** {profile}")
                                 st.markdown(f"**Weather Assessment:** {reason}")
