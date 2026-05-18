@@ -71,7 +71,7 @@ class FragranceResponse(BaseModel):
 
 # --- 5. HELPER FUNCTIONS ---
 def get_weather(city_name):
-    """Fetches real-time weather usingwttr.in (No API Key Required)"""
+    """Fetches real-time weather using wttr.in (No API Key Required)"""
     try:
         url = f"https://wttr.in/{city_name}?format=%t+%C"
         res = requests.get(url, timeout=5)
@@ -96,9 +96,32 @@ def load_image_as_base64(path):
 jpg_base64 = load_image_as_base64("jpg_elixir.png")
 bdc_base64 = load_image_as_base64("bdc.png")
 
-# --- 6. USER INTERFACE LAYOUT (UI) ---
+# --- 6. USER INTERFACE LAYOUT (UI) & CSS BACKGROUND INJECTION ---
 st.title("🔮 ScentSense AI")
 st.caption("A Context-Aware Fragrance Selection Agent & Olfactory Intelligence Platform")
+
+st.markdown(
+    """
+    <style>
+    .stApp {
+        background: linear-gradient(rgba(0, 0, 0, 0.82), rgba(0, 0, 0, 0.88)), 
+                    url('https://images.unsplash.com/photo-1615655096345-61a54750068d?q=80&w=2070&auto=format&fit=crop');
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+    }
+    .stMarkdown, h1, h2, h3, p, span, label {
+        color: #f0f2f6 !important;
+    }
+    div[data-testid="stExpander"] {
+        background-color: rgba(255, 255, 255, 0.05) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        border-radius: 8px;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
 left_col, right_col = st.columns([1, 1], gap="large")
 
@@ -211,199 +234,4 @@ with right_col:
                 display: flex;
                 flex-direction: column;
                 align-items: center;
-                justify-content: center;
-                height: 45vh;
-                position: relative;
-                padding-right: 20px;
-            }}
-            .label-status {{
-                color: #FFFFFF;
-                font-size: 14px;
-                font-weight: bold;
-                margin-bottom: 5px;
-                letter-spacing: 0.5px;
-                text-shadow: 0px 2px 5px rgba(0,0,0,0.9);
-                opacity: 0.9;
-            }}
-            .shelf-row {{
-                display: flex;
-                flex-direction: row;
-                align-items: flex-end;
-                justify-content: center;
-                gap: 35px;
-                position: relative;
-                margin-top: 20px;
-            }}
-            .perfume-item {{
-                position: relative;
-                cursor: pointer;
-            }}
-            .real-bottle {{
-                object-fit: contain;
-                background: transparent !important;
-                filter: drop-shadow(0px 12px 24px rgba(0,0,0,0.85));
-                transition: transform 0.08s ease-in-out;
-                -webkit-user-drag: none;
-                user-select: none;
-            }}
-            .img-jpg {{ height: 210px; }}
-            .img-bdc {{ height: 185px; }}
-
-            .perfume-item:active .real-bottle {{
-                transform: scale(0.94) translateY(4px);
-            }}
-            
-            .mist-particle {{
-                position: absolute;
-                border-radius: 50%;
-                pointer-events: none;
-                filter: blur(3px);
-                animation: blowOut 0.45s cubic-bezier(0.1, 0.8, 0.25, 1) forwards;
-            }}
-            @keyframes blowOut {{
-                0% {{
-                    width: 2px;
-                    height: 2px;
-                    left: var(--start-x);
-                    top: var(--start-y);
-                    opacity: 1;
-                }}
-                100% {{
-                    width: 130px;
-                    height: 95px;
-                    left: calc(var(--start-x) + var(--move-x) - 65px);
-                    top: calc(var(--start-y) + var(--move-y) - 45px);
-                    opacity: 0;
-                }}
-            }}
-            </style>
-        </head>
-        <body>
-            <div class="container-vault">
-                <div id="status-text" class="label-status">Active Spray: Le Male Elixir</div>
-                
-                <div class="shelf-row">
-                    <div class="perfume-item" onclick="triggerSpray(event, 'jpg')">
-                        <img class="real-bottle img-jpg" src="{jpg_base64}" alt="Le Male Elixir">
-                    </div>
-
-                    <div class="perfume-item" onclick="triggerSpray(event, 'bdc')">
-                        <img class="real-bottle img-bdc" src="{bdc_base64}" alt="Bleu De Chanel">
-                    </div>
-                </div>
-            </div>
-
-            <script>
-            // Global Persistent Audio Engine Settings to prevent crashing on multi-clicks
-            let audioCtx = null;
-            let noiseBuffer = null;
-
-            function initAudioEngine() {{
-                try {{
-                    const AudioContext = window.AudioContext || window.webkitAudioContext;
-                    if (!AudioContext) return;
-                    audioCtx = new AudioContext();
-                    
-                    // Pre-generate White Noise Waveform Buffer once in memory
-                    const bufSize = audioCtx.sampleRate * 0.45; 
-                    noiseBuffer = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
-                    const data = noiseBuffer.getChannelData(0);
-                    for (let i = 0; i < bufSize; i++) {{
-                        data[i] = Math.random() * 2 - 1;
-                    }}
-                }} catch (e) {{
-                    console.log("AudioContext initialization delayed until click event", e);
-                }}
-            }}
-
-            function playSpritzSound() {{
-                // Initialize context on the first interactive click if not yet active
-                if (!audioCtx) initAudioEngine();
-                if (!audioCtx || !noiseBuffer) return;
-
-                // Resume automatically if browser put the context to sleep
-                if (audioCtx.state === 'suspended') {{
-                    audioCtx.resume();
-                }}
-
-                try {{
-                    const noiseSource = audioCtx.createBufferSource();
-                    noiseSource.buffer = noiseBuffer;
-                    
-                    // Highpass Filter to lock in crisp premium air mist pressure
-                    const filter = audioCtx.createBiquadFilter();
-                    filter.type = 'highpass';
-                    filter.frequency.value = 6500; 
-                    
-                    // Audio Envelope Curve (Instant punch drop down to soft release)
-                    const gain = audioCtx.createGain();
-                    gain.gain.setValueAtTime(0, audioCtx.currentTime);
-                    gain.gain.linearRampToValueAtTime(0.25, audioCtx.currentTime + 0.01);
-                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
-                    
-                    // Audio Pipeline Node Mapping
-                    noiseSource.connect(filter);
-                    filter.connect(gain);
-                    gain.connect(audioCtx.destination);
-                    
-                    noiseSource.start();
-                }} catch (err) {{
-                    console.log("Audio block engine bypass error during spam click", err);
-                }}
-            }}
-
-            function triggerSpray(event, type) {{
-                const container = event.currentTarget;
-                const statusLabel = document.getElementById('status-text');
-                
-                if (type === 'jpg') {{
-                    statusLabel.innerText = "Active Spray: Le Male Elixir";
-                }} else {{
-                    statusLabel.innerText = "Active Spray: Bleu de Chanel";
-                }}
-                
-                // Fire persistent audio engine trigger
-                playSpritzSound();
-                
-                // Spray release point tracking
-                const startX = "50%";
-                const startY = type === 'jpg' ? "10px" : "15px";
-                
-                const colorGrad = type === 'jpg' 
-                    ? 'radial-gradient(circle, rgba(212,175,55,0.65) 0%, rgba(139,107,14,0) 75%)'
-                    : 'radial-gradient(circle, rgba(235,245,255,0.55) 0%, rgba(160,190,240,0) 75%)';
-
-                for (let i = 0; i < 10; i++) {{
-                    const p = document.createElement('div');
-                    p.classList.add('mist-particle');
-                    p.style.background = colorGrad;
-                    p.style.setProperty('--start-x', startX);
-                    p.style.setProperty('--start-y', startY);
-                    
-                    const angle = (Math.random() * 40 - 75) * (Math.PI / 180); 
-                    const dist = Math.random() * 90 + 75;
-                    
-                    p.style.setProperty('--move-x', Math.cos(angle) * dist + 'px');
-                    p.style.setProperty('--move-y', Math.sin(angle) * dist + 'px');
-                    p.style.animationDuration = (Math.random() * 0.12 + 0.38) + 's';
-                    
-                    container.appendChild(p);
-                    setTimeout(() => {{ p.remove(); }}, 450);
-                }}
-            }}
-            </script>
-        </body>
-        </html>
-        """
-        components.html(html_code, height=340, scrolling=False)
-    else:
-        st.warning("⚠️ Pakisiguradong nailagay mo na ang 'jpg_elixir.png' at 'bdc.png' sa iyong project folder para lumitaw ang mga bote nang walang white background.")
-
-    # --- HISTORICAL SCENT TIMELINE REEL ---
-    st.write("---")
-    st.subheader("📜 Scent Selection History")
-    if st.session_state.scent_history:
-        for item in reversed(st.session_state.scent_history):
-            st.info(f"✨ **{item['perfume']}** — *{item['occasion']}*\n\n📅 {item['date']} | {item['verdict']}")
-    else:
-        st.caption("No historical spray captures saved yet. Fire an engine discovery scan above!")
+                justify-content
