@@ -36,7 +36,7 @@ PH_SCENT_MAP = {
     "D'Matteos - DREAMCHASER" : "LV Imagination"
 }
 
-# 3. BACKGROUND FUNCTION (Pinterest URL)
+# 3. BACKGROUND FUNCTION WITH HIGH-CONTRAST CSS OVERRIDES
 def set_bg_from_url():
     st.markdown(
         f"""
@@ -47,17 +47,49 @@ def set_bg_from_url():
             background-position: center;
             background-attachment: fixed;
         }}
-        /* Glassmorphism styling for text and cards to stay readable */
-        .stMarkdown, .stTextInput, .stCaption, .stExpander {{
-            background-color: rgba(255, 255, 255, 0.85) !important;
-            padding: 8px;
+        
+        /* Frosted glass container shields with higher visibility */
+        .stMarkdown, .stTextInput, .stCaption, .stExpander, div[data-testid="stFileUploader"] {{
+            background-color: rgba(255, 255, 255, 0.92) !important;
+            padding: 12px;
             border-radius: 12px;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
         }}
-        div[data-testid="stExpanderDetails"] {{
-            background-color: white !important;
-            border-radius: 8px;
-            padding: 15px;
+        
+        /* FORCE EVERYTHING INSIDE STREAMLIT WRAPPERS TO BE BLACK/DARK GREY */
+        
+        /* Input labels and placeholders */
+        .stApp label, .stApp p, .stApp span, .stApp div {{
+            color: #1A1A1A !important;
+        }}
+        
+        /* Target the specific label fields like 'Where are you right now?' */
+        div[data-testid="stWidgetLabel"] p {{
+            color: #000000 !important;
+            font-weight: 600 !important;
+        }}
+        
+        /* File uploader dropzone texts */
+        div[data-testid="stFileUploader"] section div {{
+            color: #333333 !important;
+        }}
+        
+        /* Expander headers and text details */
+        .stExpander summary, .stExpander summary span, .stExpander summary p {{
+            color: #000000 !important;
+            font-weight: bold !important;
+        }}
+        
+        div[data-testid="stExpanderDetails"] p, div[data-testid="stExpanderDetails"] {{
+            color: #222222 !important;
+            background-color: #FFFFFF !important;
+        }}
+        
+        /* Reset input field interior text so it stays legible while typing */
+        .stTextInput input {{
+            color: #000000 !important;
+            background-color: #FFFFFF !important;
         }}
         </style>
         """,
@@ -84,8 +116,16 @@ st.set_page_config(
 )
 set_bg_from_url()
 
-st.title(":material/air: ScentSense AI")
-st.caption("A Context-Aware Fragrance Selection Agent")
+# Custom Header Section that bypasses native theme styling completely
+st.markdown(
+    """
+    <div style='background-color: rgba(255, 255, 255, 0.95); padding: 20px; border-radius: 12px; margin-bottom: 20px; border-left: 5px solid #1A1A1A;'>
+        <h1 style='color: #000000; margin: 0; font-size: 2.2rem; font-weight: 700;'>💨 ScentSense AI</h1>
+        <p style='color: #444444; margin: 6px 0 0 0; font-size: 1.05rem; font-weight: 500;'>A Context-Aware Fragrance Selection Agent</p>
+    </div>
+    """, 
+    unsafe_allow_html=True
+)
 
 city = st.text_input("📍 Where are you right now?", placeholder="e.g., Lipa City, PH")
 uploaded_files = st.file_uploader("📸 Upload photos of your perfumes", type=["jpg", "png", "jpeg"], accept_multiple_files=True)
@@ -105,7 +145,6 @@ if st.button("🚀 Find My Scent", use_container_width=True):
                         bytes_data = uploaded_file.getvalue()
                         image_parts.append(types.Part.from_bytes(data=bytes_data, mime_type=uploaded_file.type))
 
-                    # Updated layout prompt using clear delimiters instead of a giant paragraph
                     prompt = f"""
                     Current Weather in {city}: {temp}°C, {desc}.
                     Local Scent Map: {PH_SCENT_MAP}
@@ -131,7 +170,8 @@ if st.button("🚀 Find My Scent", use_container_width=True):
                     )
                     
                     st.success(f"Weather in {city}: {temp}°C, {desc.capitalize()}")
-                    st.subheader("🔮 Your Fragrance Analysis Breakdown")
+                    
+                    st.markdown(f"<h3 style='color: #000000; margin-top: 15px; font-weight: 700;'>🔮 Your Fragrance Analysis Breakdown</h3>", unsafe_allow_html=True)
                     
                     # 6. LAYOUT BREAKDOWN PARSER
                     raw_text = response.text
@@ -143,7 +183,6 @@ if st.button("🚀 Find My Scent", use_container_width=True):
                             detected_any = True
                             clean_block = block.split("---END---")[0].strip()
                             
-                            # Safely extract attributes from the text layout blocks
                             name, verdict, profile, reason = "Unknown Scent", "N/A", "N/A", "N/A"
                             for line in clean_block.split("\n"):
                                 if line.startswith("NAME:"):
@@ -155,19 +194,16 @@ if st.button("🚀 Find My Scent", use_container_width=True):
                                 elif line.startswith("REASON:"):
                                     reason = line.replace("REASON:", "").strip()
                             
-                            # Match recommendations to clean visual visual status indicators
                             status_badge = "🟢" if "GOOD" in verdict.upper() else "🚨"
                             
-                            # Render separate clean barriers for each perfume file item
                             with st.expander(f"{status_badge} **{name}** — *{verdict}*"):
                                 st.markdown(f"**Scent Profile:** {profile}")
                                 st.markdown(f"**Weather Assessment:** {reason}")
                                 
                     if not detected_any:
-                        # Fallback rendering if the parser fails to find clear block format
                         st.markdown(raw_text)
                             
                 except Exception as e:
-                    st.error(f"An error occurred while building the layout layout: {e}")
+                    st.error(f"An error occurred while building the layout: {e}")
 
 st.info("💡 Tip: Clear labels help the AI separate your collection into clean blocks faster.")
