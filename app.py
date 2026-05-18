@@ -5,6 +5,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
+import streamlit.components.v1 as components
 
 # 1. LOAD CONFIGURATION
 load_dotenv()
@@ -163,7 +164,7 @@ def get_weather(city_name):
 st.set_page_config(
     page_title="ScentSense AI",
     page_icon=":material/air:",
-    layout="wide" # Configured wide to fit the BDC interactive frame perfectly
+    layout="wide"
 )
 set_bg_from_url()
 
@@ -189,7 +190,7 @@ with st.sidebar:
             st.rerun()
 
 # --- SPLIT MAIN VIEW: LEFT/CENTER CORE APP VS RIGHT INTERACTIVE BDC BOTTLE ---
-main_col, bdc_col = st.columns([3.2, 1.1], gap="large")
+main_col, bdc_col = st.columns([3.2, 1.2], gap="large")
 
 with main_col:
     st.markdown(
@@ -310,96 +311,129 @@ with main_col:
 
     st.info("💡 Tip: Selecting the exact occasion helps Gemini pick the perfect compliment magnet for your vibe.")
 
-# --- RIGHT COLUMN: UNLI-CLICK BDC SPRAY ANIMATION CONTAINER ---
+# --- RIGHT COLUMN: UNLI-CLICK BDC SPRAY ANIMATION VIA EMBEDDED IFRAME COMPONENT ---
 with bdc_col:
-    st.markdown(
-        """
-        <div style="text-align: center; margin-top: 40px; position: relative;">
-            <p style="color: #CCCCCC; font-size: 0.9rem; font-style: italic; margin-bottom: 15px;">
-                Interactive BDC Spray - Wait for Loading!
-            </p>
+    # Embedded HTML frame isolate wrapper to secure proper render execution
+    html_code = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+        body {
+            background-color: transparent;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: sans-serif;
+            text-align: center;
+        }
+        .container {
+            position: relative;
+            width: 100%;
+            height: 480px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .instruction-tag {
+            color: #CCCCCC;
+            font-size: 13px;
+            font-style: italic;
+            margin-bottom: 25px;
+            user-select: none;
+        }
+        .bottle-wrapper {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+        }
+        .bdc-bottle {
+            width: 200px;
+            transition: transform 0.08s ease-in-out;
+            -webkit-user-drag: none;
+            user-select: none;
+            filter: drop-shadow(0px 8px 25px rgba(0,0,0,0.7));
+        }
+        /* Push animation response when user clicks */
+        .bottle-wrapper:active .bdc-bottle {
+            transform: scale(0.95) translateY(3px);
+        }
+        
+        /* Fine mist spray mist particle setup */
+        .mist-particle {
+            position: absolute;
+            background: radial-gradient(circle, rgba(235, 245, 255, 0.6) 0%, rgba(200, 225, 255, 0) 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            filter: blur(2px);
+            animation: atomizedSpray 0.45s cubic-bezier(0.1, 0.8, 0.25, 1) forwards;
+        }
+        @keyframes atomizedSpray {
+            0% {
+                width: 3px;
+                height: 3px;
+                left: 100px; /* Aligned dead-center on the cap top */
+                top: 45px;
+                opacity: 1;
+            }
+            100% {
+                width: 90px;
+                height: 70px;
+                left: var(--target-x);
+                top: var(--target-y);
+                opacity: 0;
+            }
+        }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="instruction-tag">Click to Spray!</div>
             
-            <style>
-            .bottle-wrapper {
-                position: relative;
-                display: inline-block;
-                cursor: pointer;
-            }
-            .bdc-bottle {
-                width: 210px;
-                transition: transform 0.1s ease;
-                -webkit-user-drag: none;
-                user-select: none;
-                filter: drop-shadow(0px 10px 20px rgba(0,0,0,0.6));
-            }
-            .bottle-wrapper:active .bdc-bottle {
-                transform: scale(0.96) translateY(2px);
-            }
-            
-            /* Dynamic Spray Mist Particle Styling */
-            .mist-particle {
-                position: absolute;
-                background: rgba(220, 240, 255, 0.4);
-                border-radius: 50%;
-                pointer-events: none;
-                filter: blur(4px);
-                animation: sprayOut 0.5s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
-            }
-            @keyframes sprayOut {
-                0% {
-                    width: 4px;
-                    height: 4px;
-                    left: 50%;
-                    top: 15%;
-                    opacity: 0.9;
-                    transform: translateX(-50%);
-                }
-                100% {
-                    width: 75px;
-                    height: 60px;
-                    left: var(--target-x);
-                    top: var(--target-y);
-                    opacity: 0;
-                }
-            }
-            </style>
-
-            <div class="bottle-wrapper" id="bdcWrapper" onclick="triggerUnliSpray(event)">
+            <div class="bottle-wrapper" id="bdcWrapper" onclick="fireUnliMist(event)">
                 <img class="bdc-bottle" src="https://i.postimg.co/j5g333vH/bdc-render.png" alt="Bleu De Chanel">
             </div>
-
-            <script>
-            function triggerUnliSpray(event) {
-                const wrapper = document.getElementById('bdcWrapper');
-                
-                // Fire multiple fine-mist cloud layers instantaneously per single click hook
-                for (let i = 0; i < 6; i++) {
-                    const particle = document.createElement('div');
-                    particle.classList.add('mist-particle');
-                    
-                    // Generate random projection patterns to simulate real atomizer dynamics
-                    const angle = (Math.random() * 40 - 20) * (Math.PI / 180); // Spread range arc
-                    const distance = Math.random() * 70 + 60; // Distance sprayed upward/outward
-                    
-                    const targetX = `calc(50% + ${Math.sin(angle) * distance}px - 30px)`;
-                    const targetY = `${15 - Math.cos(angle) * distance}px`;
-                    
-                    particle.style.setProperty('--target-x', targetX);
-                    particle.style.setProperty('--target-y', targetY);
-                    
-                    // Randomize minor burst speed variations for realism
-                    particle.style.animationDuration = `${Math.random() * 0.2 + 0.4}s`;
-                    
-                    wrapper.appendChild(particle);
-                    
-                    // Instant memory disposal loop after completion
-                    setTimeout(() => {
-                        particle.remove();
-                    }, 600);
-                }
-            }
-            </script>
         </div>
-        """,
-        unsafe_allow_html=True
-    )
+
+        <script>
+        function fireUnliMist(event) {
+            const wrapper = document.getElementById('bdcWrapper');
+            
+            // Fires 8 cloud layers instantly for heavy volumetric atomizer clouding
+            for (let i = 0; i < 8; i++) {
+                const particle = document.createElement('div');
+                particle.classList.add('mist-particle');
+                
+                // Spread patterns mirroring a real fine luxury cologne pump
+                const spreadAngle = (Math.random() * 50 - 25) * (Math.PI / 180);
+                const projectDistance = Math.random() * 80 + 75;
+                
+                // Calculate trajectory offset coordinates
+                const xOffset = Math.sin(spreadAngle) * projectDistance;
+                const yOffset = Math.cos(spreadAngle) * projectDistance;
+                
+                // Set custom target offsets dynamically per single node cycle
+                const targetX = (100 + xOffset - 45) + "px";
+                const targetY = (45 - yOffset) + "px";
+                
+                particle.style.setProperty('--target-x', targetX);
+                particle.style.setProperty('--target-y', targetY);
+                
+                // Minor speed decay variation for realism
+                particle.style.animationDuration = (Math.random() * 0.15 + 0.35) + "s";
+                
+                wrapper.appendChild(particle);
+                
+                // Immediate disposal loop right after transition ends
+                setTimeout(() => {
+                    particle.remove();
+                }, 450);
+            }
+        }
+        </script>
+    </body>
+    </html>
+    """
+    # Safe rendering isolated wrapper element frame
+    components.html(html_code, height=500, scrolling=False)
