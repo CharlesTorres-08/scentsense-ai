@@ -227,7 +227,7 @@ with main_col:
                         execution_prompt = f"Analyze the uploaded images. Identify the exact clone fragrances and map them to their inspirations using the dictionary or your global knowledge base. Current weather is {temp}°C and the occasion is '{occasion}'."
 
                         response = client.models.generate_content(
-                            model="gemini-2.5-flash-lite",
+                            model="gemini-1.5-flash",
                             contents=image_parts + [execution_prompt],
                             config=types.GenerateContentConfig(
                                 system_instruction=system_instruction,
