@@ -47,11 +47,17 @@ def set_bg_from_url():
             background-position: center;
             background-attachment: fixed;
         }}
-        /* Make text more readable against the image */
-        .stMarkdown, .stTextInput, .stCaption {{
-            background-color: rgba(255, 255, 255, 0.4);
-            padding: 10px;
-            border-radius: 10px;
+        /* Glassmorphism styling for text and cards to stay readable */
+        .stMarkdown, .stTextInput, .stCaption, .stExpander {{
+            background-color: rgba(255, 255, 255, 0.85) !important;
+            padding: 8px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+        }}
+        div[data-testid="stExpanderDetails"] {{
+            background-color: white !important;
+            border-radius: 8px;
+            padding: 15px;
         }}
         </style>
         """,
@@ -74,20 +80,12 @@ def get_weather(city):
 # 5. APP UI
 st.set_page_config(
     page_title="ScentSense AI",
-    page_icon=":material/air:" # Looks like a spray bottle
+    page_icon=":material/air:" 
 )
 set_bg_from_url()
 
 st.title(":material/air: ScentSense AI")
 st.caption("A Context-Aware Fragrance Selection Agent")
-st.markdown(
-    """
-    <h1 style='color: white; text-shadow: 0px 0px 15px rgba(255,255,255,0.8);'>
-        ScentSense AI
-    </h1>
-    """, 
-    unsafe_allow_html=True
-)
 
 city = st.text_input("📍 Where are you right now?", placeholder="e.g., Lipa City, PH")
 uploaded_files = st.file_uploader("📸 Upload photos of your perfumes", type=["jpg", "png", "jpeg"], accept_multiple_files=True)
@@ -96,7 +94,7 @@ if st.button("🚀 Find My Scent", use_container_width=True):
     if not uploaded_files or not city:
         st.warning("Please provide both your city and at least one perfume photo!")
     else:
-        with st.spinner("Analyzing your shelf..."):
+        with st.spinner("Analyzing your fragrance collection..."):
             temp, desc = get_weather(city)
             if temp is None:
                 st.error(f"Weather Error: {desc}")
@@ -107,19 +105,21 @@ if st.button("🚀 Find My Scent", use_container_width=True):
                         bytes_data = uploaded_file.getvalue()
                         image_parts.append(types.Part.from_bytes(data=bytes_data, mime_type=uploaded_file.type))
 
-                    # Logic prompt
+                    # Updated layout prompt using clear delimiters instead of a giant paragraph
                     prompt = f"""
                     Current Weather in {city}: {temp}°C, {desc}.
                     Local Scent Map: {PH_SCENT_MAP}
 
-                    1. Identify the perfumes. For PH local brands, use the Map above.
-                    2. If a brand isn't in the Map, USE GOOGLE SEARCH to find notes from TikTok or Shopee.
-                    3. Recommend the best one for {temp}°C weather.
+                    Analyze the uploaded perfume bottles. Identify all of them.
+                    For PH local brands, reference the Map. Use Google Search grounding to verify notes.
 
-                    Format:
-                    - **Detected:** [Name]
-                    - **Scent Profile:** [Notes]
-                    - **Recommendation:** [Why it fits today]
+                    For EVERY perfume bottle detected, you must output its details exactly using this block format:
+                    ---PERFUME---
+                    NAME: [Perfume Name]
+                    VERDICT: [GOOD CHOICE or NOT RECOMMENDED]
+                    PROFILE: [Scent notes or what it is inspired by]
+                    REASON: [Short explanation why it fits or doesn't fit {temp}°C weather]
+                    ---END---
                     """
 
                     response = client.models.generate_content(
@@ -131,9 +131,43 @@ if st.button("🚀 Find My Scent", use_container_width=True):
                     )
                     
                     st.success(f"Weather in {city}: {temp}°C, {desc.capitalize()}")
-                    st.markdown(response.text)
-                
+                    st.subheader("🔮 Your Fragrance Analysis Breakdown")
+                    
+                    # 6. LAYOUT BREAKDOWN PARSER
+                    raw_text = response.text
+                    raw_blocks = raw_text.split("---PERFUME---")
+                    
+                    detected_any = False
+                    for block in raw_blocks:
+                        if "---END---" in block:
+                            detected_any = True
+                            clean_block = block.split("---END---")[0].strip()
+                            
+                            # Safely extract attributes from the text layout blocks
+                            name, verdict, profile, reason = "Unknown Scent", "N/A", "N/A", "N/A"
+                            for line in clean_block.split("\n"):
+                                if line.startswith("NAME:"):
+                                    name = line.replace("NAME:", "").strip()
+                                elif line.startswith("VERDICT:"):
+                                    verdict = line.replace("VERDICT:", "").strip()
+                                elif line.startswith("PROFILE:"):
+                                    profile = line.replace("PROFILE:", "").strip()
+                                elif line.startswith("REASON:"):
+                                    reason = line.replace("REASON:", "").strip()
+                            
+                            # Match recommendations to clean visual visual status indicators
+                            status_badge = "🟢" if "GOOD" in verdict.upper() else "🚨"
+                            
+                            # Render separate clean barriers for each perfume file item
+                            with st.expander(f"{status_badge} **{name}** — *{verdict}*"):
+                                st.markdown(f"**Scent Profile:** {profile}")
+                                st.markdown(f"**Weather Assessment:** {reason}")
+                                
+                    if not detected_any:
+                        # Fallback rendering if the parser fails to find clear block format
+                        st.markdown(raw_text)
+                            
                 except Exception as e:
-                    st.error(f"An error occurred: {e}")
+                    st.error(f"An error occurred while building the layout layout: {e}")
 
-st.info("💡 Tip: Clear labels help the AI identify your collection faster.")
+st.info("💡 Tip: Clear labels help the AI separate your collection into clean blocks faster.")
