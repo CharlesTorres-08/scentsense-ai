@@ -56,6 +56,7 @@ PH_SCENT_MAP = {
     "Elite Fragrances - Azure": "Bleu De Chanel EDP",
     "Fragrance World - Suits" : "YSL Tuxedo",
     "Fragrance World - Venti Absolu": "Aventus Absolu",
+    "Jem Perfumery - CARAT NO.9": "Mancera Amore Cafe",
     "AHMED - KAAF" : "PDM Percival",
     "Enzo Scents - BIRI" : "Valentino Born in Roma Intense",
     "Enzo Scents - Blue Talisman" : "Ex Nihilo Blue Talisman",
