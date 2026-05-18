@@ -46,7 +46,7 @@ PH_SCENT_MAP = {
     "D'Matteos - DREAMCHASER" : "LV Imagination"
 }
 
-# 3. BACKGROUND FUNCTION WITH FIX FOR F-STRINGS
+# 3. BACKGROUND FUNCTION
 def set_bg_from_url():
     st.markdown(
         """
@@ -58,7 +58,6 @@ def set_bg_from_url():
             background-attachment: fixed;
         }
         
-        /* White Frosted Glass Card Shields */
         .stTextInput, .stSelectbox, div[data-testid="stFileUploader"] {
             background-color: rgba(255, 255, 255, 0.9) !important;
             padding: 14px;
@@ -103,13 +102,6 @@ def set_bg_from_url():
             background-color: #121214 !important;
             padding: 15px !important;
         }
-        div[data-testid="stExpanderDetails"] .stMarkdown {
-            background-color: rgba(255, 255, 255, 0.05) !important;
-            border: 1px solid rgba(255, 255, 255, 0.08) !important;
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 8px;
-        }
         div[data-testid="stExpanderDetails"] p, div[data-testid="stExpanderDetails"] strong {
             color: #FFFFFF !important;
         }
@@ -118,68 +110,47 @@ def set_bg_from_url():
             background-color: rgba(20, 20, 25, 0.95) !important;
             border-right: 1px solid rgba(255, 255, 255, 0.1);
         }
-        section[data-testid="stSidebar"] * {
-            color: #FFFFFF !important;
-        }
         
         .stButton button {
             background-color: #1E1E24 !important;
             color: #FFFFFF !important;
             border: 1px solid rgba(255, 255, 255, 0.2) !important;
         }
-        .stButton button p {
-            color: #FFFFFF !important;
-        }
         </style>
         """,
         unsafe_allow_html=True
     )
 
-# 4. WEATHER TOOL (Inayos ang f-string nesting para iwas SyntaxError)
+# 4. WEATHER TOOL
 def get_weather(city_name):
     base_url = "http://api.openweathermap.org/data/2.5/weather"
-    params = {
-        "q": city_name,
-        "appid": WEATHER_KEY,
-        "units": "metric"
-    }
+    params = {"q": city_name, "appid": WEATHER_KEY, "units": "metric"}
     try:
         response = requests.get(base_url, params=params)
         data = response.json()
         if response.status_code == 200:
             return data['main']['temp'], data['weather'][0]['description']
-        else:
-            return None, data.get("message", "City not found")
+        return None, data.get("message", "City not found")
     except Exception as e:
         return None, str(e)
 
 # 5. APP UI LAYOUT SETUP
-st.set_page_config(
-    page_title="ScentSense AI",
-    page_icon=":material/air:",
-    layout="wide"
-)
+st.set_page_config(page_title="ScentSense AI", page_icon=":material/air:", layout="wide")
 set_bg_from_url()
 
 # --- SIDEBAR ---
 with st.sidebar:
     st.markdown("### 📜 Scent History")
-    st.caption("Your saved and recommended picks:")
-    
     if not st.session_state.scent_history:
         st.info("No recommendations saved yet.")
     else:
-        for idx, item in enumerate(reversed(st.session_state.scent_history)):
-            with st.container():
-                st.markdown(f"**🌟 {item['perfume']}**")
-                st.caption(f"📅 {item['date']} | 🎯 {item['occasion']}")
-                st.markdown(f"*{item['verdict']}*")
-                st.markdown("---")
-        
+        for item in reversed(st.session_state.scent_history):
+            st.markdown(f"**🌟 {item['perfume']}**")
+            st.caption(f"📅 {item['date']} | 🎯 {item['occasion']}")
+            st.markdown(f"*{item['verdict']}*")
+            st.markdown("---")
         if st.button("🗑️ Clear History", use_container_width=True):
-            st.session_state.scent_history = []
-            st.session_state.active_analysis = None
-            st.session_state.weather_info = None
+            st.session_state.scent_history, st.session_state.active_analysis, st.session_state.weather_info = [], None, None
             st.rerun()
 
 # --- MAIN COLUMNS ---
@@ -188,7 +159,7 @@ main_col, perfume_col = st.columns([3.2, 1.2], gap="large")
 with main_col:
     st.markdown(
         """
-        <div style='background-color: rgba(15, 15, 20, 0.85); backdrop-filter: blur(10px); padding: 22px; border-radius: 12px; margin-bottom: 25px; border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0px 4px 15px rgba(0,0,0,0.3);'>
+        <div style='background-color: rgba(15, 15, 20, 0.85); backdrop-filter: blur(10px); padding: 22px; border-radius: 12px; margin-bottom: 25px; border: 1px solid rgba(255, 255, 255, 0.1);'>
             <h1 style='color: #FFFFFF; margin: 0; font-size: 2.3rem; font-weight: 700;'>💨 ScentSense AI</h1>
             <p style='color: #CCCCCC; margin: 6px 0 0 0; font-size: 1.05rem;'>A Context-Aware Fragrance Selection Agent</p>
         </div>
@@ -197,12 +168,7 @@ with main_col:
     )
 
     city = st.text_input("📍 Where are you right now?", placeholder="e.g., Lipa City, PH")
-
-    occasion = st.selectbox(
-        "🎯 What is the occasion/vibe for today?",
-        ["Casual / Daily Wear", "Office / School / Professional", "Date Night / Romantic", "Gym / Sports / Activewear", "Formal Event / Wedding"]
-    )
-
+    occasion = st.selectbox("🎯 What is the occasion/vibe for today?", ["Casual / Daily Wear", "Office / School / Professional", "Date Night / Romantic", "Gym / Sports / Activewear", "Formal Event / Wedding"])
     uploaded_files = st.file_uploader("📸 Upload photos of your perfumes", type=["jpg", "png", "jpeg"], accept_multiple_files=True)
 
     if st.button("🚀 Find My Scent", use_container_width=True):
@@ -211,89 +177,41 @@ with main_col:
         else:
             with st.spinner("Analyzing your fragrance collection..."):
                 temp, desc = get_weather(city)
-                if temp is None:
-                    st.error(f"Weather Error: {desc}")
-                else:
+                if temp is not None:
                     try:
-                        image_parts = []
-                        for uploaded_file in uploaded_files:
-                            bytes_data = uploaded_file.getvalue()
-                            image_parts.append(types.Part.from_bytes(data=bytes_data, mime_type=uploaded_file.type))
-
-                        # Inayos ang prompt formatting para hindi mag-trigger ng termination syntax error
-                        prompt_lines = [
-                            f"Current Weather: {temp}C, {desc}.",
-                            f"Target Occasion: {occasion}.",
-                            "Identify all perfume bottles in the images.",
-                            "Format: ---PERFUME---",
-                            "NAME: [Perfume Name]",
-                            "VERDICT: [GOOD CHOICE or NOT RECOMMENDED]",
-                            "PROFILE: [Scent profile]",
-                            "REASON: [Why it matches]",
-                            "---END---"
-                        ]
-                        full_prompt = " ".join(prompt_lines)
-
-                        response = client.models.generate_content(
-                            model="gemini-2.5-flash-lite",
-                            contents=image_parts + [full_prompt]
-                        )
+                        image_parts = [types.Part.from_bytes(data=f.getvalue(), mime_type=f.type) for f in uploaded_files]
+                        prompt = f"Weather: {temp}C, {desc}. Occasion: {occasion}. Dictionary: {PH_SCENT_MAP}. Identify all bottles. Format: ---PERFUME--- NAME: [Name] VERDICT: [GOOD CHOICE/NOT RECOMMENDED] PROFILE: [Profile] REASON: [Why] ---END---"
+                        response = client.models.generate_content(model="gemini-2.5-flash-lite", contents=image_parts + [prompt])
                         
                         st.session_state.weather_info = f"Weather in {city}: {temp}°C, {desc.capitalize()}"
-                        
                         parsed_perfumes = []
-                        raw_blocks = response.text.split("---PERFUME---")
-                        
-                        for block in raw_blocks:
+                        for block in response.text.split("---PERFUME---"):
                             if "---END---" in block:
                                 clean_block = block.split("---END---")[0].strip()
                                 name, verdict, profile, reason = "Unknown Scent", "N/A", "N/A", "N/A"
-                                
                                 for line in clean_block.split("\n"):
-                                    if line.strip().startswith("NAME:"):
-                                        name = line.replace("NAME:", "").strip()
-                                    elif line.strip().startswith("VERDICT:"):
-                                        verdict = line.replace("VERDICT:", "").strip()
-                                    elif line.strip().startswith("PROFILE:"):
-                                        profile = line.replace("PROFILE:", "").strip()
-                                    elif line.strip().startswith("REASON:"):
-                                        reason = line.replace("REASON:", "").strip()
-                                
-                                parsed_perfumes.append({
-                                    "name": name,
-                                    "verdict": verdict,
-                                    "profile": profile,
-                                    "reason": reason
-                                })
-                                
+                                    if line.strip().startswith("NAME:"): name = line.replace("NAME:", "").strip()
+                                    elif line.strip().startswith("VERDICT:"): verdict = line.replace("VERDICT:", "").strip()
+                                    elif line.strip().startswith("PROFILE:"): profile = line.replace("PROFILE:", "").strip()
+                                    elif line.strip().startswith("REASON:"): reason = line.replace("REASON:", "").strip()
+                                parsed_perfumes.append({"name": name, "verdict": verdict, "profile": profile, "reason": reason})
                                 if "GOOD" in verdict.upper():
-                                    timestamp = datetime.now().strftime("%b %d, %I:%M %p")
-                                    st.session_state.scent_history.append({
-                                        "perfume": name,
-                                        "date": timestamp,
-                                        "occasion": occasion,
-                                        "verdict": reason
-                                    })
-                        
-                        st.session_state.active_analysis = parsed_perfumes if parsed_perfumes else response.text
+                                    st.session_state.scent_history.append({"perfume": name, "date": datetime.now().strftime("%b %d, %I:%M %p"), "occasion": occasion, "verdict": reason})
+                        st.session_state.active_analysis = parsed_perfumes
                         st.rerun()
-                                
                     except Exception as e:
                         st.error(f"An error occurred: {e}")
 
     if st.session_state.active_analysis:
         st.success(st.session_state.weather_info)
-        st.markdown("<h3 style='color: #FFFFFF; margin-top: 20px; font-weight: 700;'>🔮 Your Fragrance Analysis Breakdown</h3>", unsafe_allow_html=True)
-        if isinstance(st.session_state.active_analysis, list):
-            for p in st.session_state.active_analysis:
-                status_badge = "🟢" if "GOOD" in p['verdict'].upper() else "🚨"
-                with st.expander(f"{status_badge} {p['name']} — {p['verdict']}"):
-                    st.markdown(f"**Scent Profile:** {p['profile']}")
-                    st.markdown(f"**Weather Assessment:** {p['reason']}")
+        for p in st.session_state.active_analysis:
+            status_badge = "🟢" if "GOOD" in p['verdict'].upper() else "🚨"
+            with st.expander(f"{status_badge} {p['name']} — {p['verdict']}"):
+                st.markdown(f"**Scent Profile:** {p['profile']}\n\n**Weather Assessment:** {p['reason']}")
 
 with perfume_col:
-    # --- INTERACTIVE 3D REALISTIC BOTTLES BLOCK ---
-    # Gumagamit ng high-quality web-hosted image resources para sa photorealistic finish.
+    # --- INTERACTIVE TRUE PHOTOREALISTIC BOTTLES VAULT ---
+    # Gumagamit ng eksaktong transparent-cut studio graphics para sa BDC at Le Male Elixir.
     html_code = """
     <!DOCTYPE html>
     <html>
@@ -311,15 +229,16 @@ with perfume_col:
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 45px;
+            gap: 50px;
             padding-top: 15px;
         }
         .instruction {
             color: #CCCCCC;
-            font-size: 13px;
+            font-size: 14px;
             font-style: italic;
             user-select: none;
-            text-shadow: 0px 2px 4px rgba(0,0,0,0.6);
+            font-weight: bold;
+            text-shadow: 0px 2px 4px rgba(0,0,0,0.7);
         }
         .perfume-item {
             position: relative;
@@ -327,22 +246,22 @@ with perfume_col:
             cursor: pointer;
         }
         .real-bottle {
-            height: 185px;
+            height: 190px;
             object-fit: contain;
-            filter: drop-shadow(0px 10px 20px rgba(0,0,0,0.75));
+            filter: drop-shadow(0px 8px 16px rgba(0,0,0,0.6));
             transition: transform 0.08s ease-in-out;
             -webkit-user-drag: none;
             user-select: none;
         }
-        /* Click feedback bounce compression */
+        /* Haptic click effect */
         .perfume-item:active .real-bottle {
-            transform: scale(0.94) translateY(3px);
+            transform: scale(0.93) translateY(3px);
         }
         
-        /* Fine particle cloud atomizer spray setup */
+        /* Fine luxury mist cloud particle system */
         .mist-cloud {
             position: absolute;
-            background: radial-gradient(circle, rgba(240, 248, 255, 0.6) 0%, rgba(200, 220, 255, 0) 72%);
+            background: radial-gradient(circle, rgba(245, 250, 255, 0.55) 0%, rgba(180, 210, 255, 0) 75%);
             border-radius: 50%;
             pointer-events: none;
             filter: blur(2px);
@@ -350,15 +269,15 @@ with perfume_col:
         }
         @keyframes blowSpray {
             0% {
-                width: 3px;
-                height: 3px;
+                width: 2px;
+                height: 2px;
                 left: 50%;
                 top: 0px;
                 transform: translateX(-50%);
                 opacity: 1;
             }
             100% {
-                width: 110px;
+                width: 120px;
                 height: 85px;
                 left: calc(50% + var(--target-x));
                 top: var(--target-y);
@@ -372,12 +291,12 @@ with perfume_col:
         <div class="display-vault">
             <div class="instruction">Click to Spray!</div>
             
-            <div class="perfume-item" onclick="triggerAtomizer(event, -15)">
-                <img class="real-bottle" src="https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&q=80&w=400" alt="BDC">
+            <div class="perfume-item" onclick="triggerAtomizer(event, -10)">
+                <img class="real-bottle" src="https://i.postimg.com/pXv1r0Tz/bdc-trans.png" alt="Bleu De Chanel">
             </div>
 
-            <div class="perfume-item" onclick="triggerAtomizer(event, -10)">
-                <img class="real-bottle" src="https://images.unsplash.com/photo-1547887537-6158d64c35b3?auto=format&fit=crop&q=80&w=400" alt="JPG">
+            <div class="perfume-item" onclick="triggerAtomizer(event, -5)">
+                <img class="real-bottle" src="https://i.postimg.com/wM46k4Vj/jpg-elixir-trans.png" alt="Le Male Elixir">
             </div>
         </div>
 
@@ -389,8 +308,8 @@ with perfume_col:
                 const mist = document.createElement('div');
                 mist.classList.add('mist-cloud');
                 
-                const angle = (Math.random() * 50 - 25) * (Math.PI / 180);
-                const distance = Math.random() * 80 + 70;
+                const angle = (Math.random() * 46 - 23) * (Math.PI / 180);
+                const distance = Math.random() * 85 + 70;
                 
                 const xOffset = Math.sin(angle) * distance;
                 const yOffset = Math.cos(angle) * distance;
