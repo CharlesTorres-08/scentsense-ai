@@ -159,10 +159,11 @@ def get_weather(city_name):
     except Exception as e:
         return None, str(e)
 
-# 5. APP UI
+# 5. APP UI LAYOUT SETUP
 st.set_page_config(
     page_title="ScentSense AI",
-    page_icon=":material/air:" 
+    page_icon=":material/air:",
+    layout="wide" # Configured wide to fit the BDC interactive frame perfectly
 )
 set_bg_from_url()
 
@@ -187,126 +188,218 @@ with st.sidebar:
             st.session_state.weather_info = None
             st.rerun()
 
-# --- MAIN PAGE CONTENT ---
-st.markdown(
-    """
-    <div style='background-color: rgba(15, 15, 20, 0.85); backdrop-filter: blur(10px); padding: 22px; border-radius: 12px; margin-bottom: 25px; border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0px 4px 15px rgba(0,0,0,0.3);'>
-        <h1 style='color: #FFFFFF; margin: 0; font-size: 2.3rem; font-weight: 700;'>💨 ScentSense AI</h1>
-        <p style='color: #CCCCCC; margin: 6px 0 0 0; font-size: 1.05rem;'>A Context-Aware Fragrance Selection Agent</p>
-    </div>
-    """, 
-    unsafe_allow_html=True
-)
+# --- SPLIT MAIN VIEW: LEFT/CENTER CORE APP VS RIGHT INTERACTIVE BDC BOTTLE ---
+main_col, bdc_col = st.columns([3.2, 1.1], gap="large")
 
-city = st.text_input("📍 Where are you right now?", placeholder="e.g., Lipa City, PH")
+with main_col:
+    st.markdown(
+        """
+        <div style='background-color: rgba(15, 15, 20, 0.85); backdrop-filter: blur(10px); padding: 22px; border-radius: 12px; margin-bottom: 25px; border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0px 4px 15px rgba(0,0,0,0.3);'>
+            <h1 style='color: #FFFFFF; margin: 0; font-size: 2.3rem; font-weight: 700;'>💨 ScentSense AI</h1>
+            <p style='color: #CCCCCC; margin: 6px 0 0 0; font-size: 1.05rem;'>A Context-Aware Fragrance Selection Agent</p>
+        </div>
+        """, 
+        unsafe_allow_html=True
+    )
 
-occasion = st.selectbox(
-    "🎯 What is the occasion/vibe for today?",
-    ["Casual / Daily Wear", "Office / School / Professional", "Date Night / Romantic", "Gym / Sports / Activewear", "Formal Event / Wedding"]
-)
+    city = st.text_input("📍 Where are you right now?", placeholder="e.g., Lipa City, PH")
 
-uploaded_files = st.file_uploader("📸 Upload photos of your perfumes", type=["jpg", "png", "jpeg"], accept_multiple_files=True)
+    occasion = st.selectbox(
+        "🎯 What is the occasion/vibe for today?",
+        ["Casual / Daily Wear", "Office / School / Professional", "Date Night / Romantic", "Gym / Sports / Activewear", "Formal Event / Wedding"]
+    )
 
-if st.button("🚀 Find My Scent", use_container_width=True):
-    if not uploaded_files or not city:
-        st.warning("Please provide both your city and at least one perfume photo!")
-    else:
-        with st.spinner("Analyzing your fragrance collection..."):
-            temp, desc = get_weather(city)
-            if temp is None:
-                st.error(f"Weather Error: {desc}")
-            else:
-                try:
-                    image_parts = []
-                    for uploaded_file in uploaded_files:
-                        bytes_data = uploaded_file.getvalue()
-                        image_parts.append(types.Part.from_bytes(data=bytes_data, mime_type=uploaded_file.type))
+    uploaded_files = st.file_uploader("📸 Upload photos of your perfumes", type=["jpg", "png", "jpeg"], accept_multiple_files=True)
 
-                    prompt_lines = [
-                        f"Current Weather: {temp}C, {desc}.",
-                        f"Target Occasion: {occasion}.",
-                        f"Local Brand Dictionary Map: {PH_SCENT_MAP}",
-                        "Identify all perfume bottles in the images. Reference the dictionary for local clones/inspirations.",
-                        "Evaluate if the perfume matches BOTH the current weather temperature AND the selected lifestyle occasion context.",
-                        "CRITICAL: For every single perfume bottle detected, you MUST output its result split exactly into this format:",
-                        "---PERFUME---",
-                        "NAME: [Write Perfume Brand and Name here]",
-                        "VERDICT: [Write GOOD CHOICE or NOT RECOMMENDED here]",
-                        "PROFILE: [Write short details about its scent profile/vibe here]",
-                        "REASON: [Explain why it fits or does not fit the weather and the chosen occasion context here]",
-                        "---END---"
-                    ]
-                    full_prompt = "\n".join(prompt_lines)
+    if st.button("🚀 Find My Scent", use_container_width=True):
+        if not uploaded_files or not city:
+            st.warning("Please provide both your city and at least one perfume photo!")
+        else:
+            with st.spinner("Analyzing your fragrance collection..."):
+                temp, desc = get_weather(city)
+                if temp is None:
+                    st.error(f"Weather Error: {desc}")
+                else:
+                    try:
+                        image_parts = []
+                        for uploaded_file in uploaded_files:
+                            bytes_data = uploaded_file.getvalue()
+                            image_parts.append(types.Part.from_bytes(data=bytes_data, mime_type=uploaded_file.type))
 
-                    response = client.models.generate_content(
-                        model="gemini-2.5-flash-lite",
-                        contents=image_parts + [full_prompt],
-                        config=types.GenerateContentConfig(
-                            tools=[types.Tool(google_search=types.GoogleSearchRetrieval())]
+                        prompt_lines = [
+                            f"Current Weather: {temp}C, {desc}.",
+                            f"Target Occasion: {occasion}.",
+                            f"Local Brand Dictionary Map: {PH_SCENT_MAP}",
+                            "Identify all perfume bottles in the images. Reference the dictionary for local clones/inspirations.",
+                            "Evaluate if the perfume matches BOTH the current weather temperature AND the selected lifestyle occasion context.",
+                            "CRITICAL: For every single perfume bottle detected, you MUST output its result split exactly into this format:",
+                            "---PERFUME---",
+                            "NAME: [Write Perfume Brand and Name here]",
+                            "VERDICT: [Write GOOD CHOICE or NOT RECOMMENDED here]",
+                            "PROFILE: [Write short details about its scent profile/vibe here]",
+                            "REASON: [Explain why it fits or does not fit the weather and the chosen occasion context here]",
+                            "---END---"
+                        ]
+                        full_prompt = "\n".join(prompt_lines)
+
+                        response = client.models.generate_content(
+                            model="gemini-2.5-flash-lite",
+                            contents=image_parts + [full_prompt],
+                            config=types.GenerateContentConfig(
+                                tools=[types.Tool(google_search=types.GoogleSearchRetrieval())]
+                            )
                         )
-                    )
-                    
-                    # Store variables globally inside session memory to safe-keep past a manual UI reload trigger
-                    st.session_state.weather_info = f"Weather in {city}: {temp}°C, {desc.capitalize()}"
-                    
-                    parsed_perfumes = []
-                    raw_text = response.text
-                    raw_blocks = raw_text.split("---PERFUME---")
-                    
-                    for block in raw_blocks:
-                        if "---END---" in block:
-                            clean_block = block.split("---END---")[0].strip()
-                            name, verdict, profile, reason = "Unknown Scent", "N/A", "N/A", "N/A"
-                            
-                            for line in clean_block.split("\n"):
-                                if line.strip().startswith("NAME:"):
-                                    name = line.replace("NAME:", "").strip()
-                                elif line.strip().startswith("VERDICT:"):
-                                    verdict = line.replace("VERDICT:", "").strip()
-                                elif line.strip().startswith("PROFILE:"):
-                                    profile = line.replace("PROFILE:", "").strip()
-                                elif line.strip().startswith("REASON:"):
-                                    reason = line.replace("REASON:", "").strip()
-                            
-                            parsed_perfumes.append({
-                                "name": name,
-                                "verdict": verdict,
-                                "profile": profile,
-                                "reason": reason
-                            })
-                            
-                            # Append to modern sidebar logs if highly recommended
-                            if "GOOD" in verdict.upper():
-                                timestamp = datetime.now().strftime("%b %d, %I:%M %p")
-                                if not any(h['perfume'] == name and h['occasion'] == occasion for h in st.session_state.scent_history):
-                                    st.session_state.scent_history.append({
-                                        "perfume": name,
-                                        "date": timestamp,
-                                        "occasion": occasion,
-                                        "verdict": reason
-                                    })
-                    
-                    # Safe keeping screen lists active 
-                    st.session_state.active_analysis = parsed_perfumes if parsed_perfumes else raw_text
-                    st.rerun()
-                            
-                except Exception as e:
-                    st.error(f"An error occurred while cleaning the layout: {e}")
+                        
+                        st.session_state.weather_info = f"Weather in {city}: {temp}°C, {desc.capitalize()}"
+                        
+                        parsed_perfumes = []
+                        raw_text = response.text
+                        raw_blocks = raw_text.split("---PERFUME---")
+                        
+                        for block in raw_blocks:
+                            if "---END---" in block:
+                                clean_block = block.split("---END---")[0].strip()
+                                name, verdict, profile, reason = "Unknown Scent", "N/A", "N/A", "N/A"
+                                
+                                for line in clean_block.split("\n"):
+                                    if line.strip().startswith("NAME:"):
+                                        name = line.replace("NAME:", "").strip()
+                                    elif line.strip().startswith("VERDICT:"):
+                                        verdict = line.replace("VERDICT:", "").strip()
+                                    elif line.strip().startswith("PROFILE:"):
+                                        profile = line.replace("PROFILE:", "").strip()
+                                    elif line.strip().startswith("REASON:"):
+                                        reason = line.replace("REASON:", "").strip()
+                                
+                                parsed_perfumes.append({
+                                    "name": name,
+                                    "verdict": verdict,
+                                    "profile": profile,
+                                    "reason": reason
+                                })
+                                
+                                if "GOOD" in verdict.upper():
+                                    timestamp = datetime.now().strftime("%b %d, %I:%M %p")
+                                    if not any(h['perfume'] == name and h['occasion'] == occasion for h in st.session_state.scent_history):
+                                        st.session_state.scent_history.append({
+                                            "perfume": name,
+                                            "date": timestamp,
+                                            "occasion": occasion,
+                                            "verdict": reason
+                                        })
+                        
+                        st.session_state.active_analysis = parsed_perfumes if parsed_perfumes else raw_text
+                        st.rerun()
+                                
+                    except Exception as e:
+                        st.error(f"An error occurred while cleaning the layout: {e}")
 
-# --- PERSISTENT OUTPUT ZONE RIGHT UNDER THE BUTTON ---
-if st.session_state.active_analysis:
-    st.success(st.session_state.weather_info)
-    st.markdown("<h3 style='color: #FFFFFF; margin-top: 20px; font-weight: 700;'>🔮 Your Fragrance Analysis Breakdown</h3>", unsafe_allow_html=True)
-    
-    # Check if we have parsed structured expander objects or raw strings
-    if isinstance(st.session_state.active_analysis, list):
-        for p in st.session_state.active_analysis:
-            status_badge = "🟢" if "GOOD" in p['verdict'].upper() else "🚨"
+    # --- PERSISTENT OUTPUT DISPLAY ZONE ---
+    if st.session_state.active_analysis:
+        st.success(st.session_state.weather_info)
+        st.markdown("<h3 style='color: #FFFFFF; margin-top: 20px; font-weight: 700;'>🔮 Your Fragrance Analysis Breakdown</h3>", unsafe_allow_html=True)
+        
+        if isinstance(st.session_state.active_analysis, list):
+            for p in st.session_state.active_analysis:
+                status_badge = "🟢" if "GOOD" in p['verdict'].upper() else "🚨"
+                with st.expander(f"{status_badge} {p['name']} — {p['verdict']}"):
+                    st.markdown(f"**Scent Profile:** {p['profile']}")
+                    st.markdown(f"**Weather Assessment:** {p['reason']}")
+        else:
+            st.markdown(st.session_state.active_analysis)
+
+    st.info("💡 Tip: Selecting the exact occasion helps Gemini pick the perfect compliment magnet for your vibe.")
+
+# --- RIGHT COLUMN: UNLI-CLICK BDC SPRAY ANIMATION CONTAINER ---
+with bdc_col:
+    st.markdown(
+        """
+        <div style="text-align: center; margin-top: 40px; position: relative;">
+            <p style="color: #CCCCCC; font-size: 0.9rem; font-style: italic; margin-bottom: 15px;">
+                Interactive BDC Spray - Wait for Loading!
+            </p>
             
-            with st.expander(f"{status_badge} {p['name']} — {p['verdict']}"):
-                st.markdown(f"**Scent Profile:** {p['profile']}")
-                st.markdown(f"**Weather Assessment:** {p['reason']}")
-    else:
-        st.markdown(st.session_state.active_analysis)
+            <style>
+            .bottle-wrapper {
+                position: relative;
+                display: inline-block;
+                cursor: pointer;
+            }
+            .bdc-bottle {
+                width: 210px;
+                transition: transform 0.1s ease;
+                -webkit-user-drag: none;
+                user-select: none;
+                filter: drop-shadow(0px 10px 20px rgba(0,0,0,0.6));
+            }
+            .bottle-wrapper:active .bdc-bottle {
+                transform: scale(0.96) translateY(2px);
+            }
+            
+            /* Dynamic Spray Mist Particle Styling */
+            .mist-particle {
+                position: absolute;
+                background: rgba(220, 240, 255, 0.4);
+                border-radius: 50%;
+                pointer-events: none;
+                filter: blur(4px);
+                animation: sprayOut 0.5s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+            }
+            @keyframes sprayOut {
+                0% {
+                    width: 4px;
+                    height: 4px;
+                    left: 50%;
+                    top: 15%;
+                    opacity: 0.9;
+                    transform: translateX(-50%);
+                }
+                100% {
+                    width: 75px;
+                    height: 60px;
+                    left: var(--target-x);
+                    top: var(--target-y);
+                    opacity: 0;
+                }
+            }
+            </style>
 
-st.info("💡 Tip: Selecting the exact occasion helps Gemini pick the perfect compliment magnet for your vibe.")
+            <div class="bottle-wrapper" id="bdcWrapper" onclick="triggerUnliSpray(event)">
+                <img class="bdc-bottle" src="https://i.postimg.co/j5g333vH/bdc-render.png" alt="Bleu De Chanel">
+            </div>
+
+            <script>
+            function triggerUnliSpray(event) {
+                const wrapper = document.getElementById('bdcWrapper');
+                
+                // Fire multiple fine-mist cloud layers instantaneously per single click hook
+                for (let i = 0; i < 6; i++) {
+                    const particle = document.createElement('div');
+                    particle.classList.add('mist-particle');
+                    
+                    // Generate random projection patterns to simulate real atomizer dynamics
+                    const angle = (Math.random() * 40 - 20) * (Math.PI / 180); // Spread range arc
+                    const distance = Math.random() * 70 + 60; // Distance sprayed upward/outward
+                    
+                    const targetX = `calc(50% + ${Math.sin(angle) * distance}px - 30px)`;
+                    const targetY = `${15 - Math.cos(angle) * distance}px`;
+                    
+                    particle.style.setProperty('--target-x', targetX);
+                    particle.style.setProperty('--target-y', targetY);
+                    
+                    // Randomize minor burst speed variations for realism
+                    particle.style.animationDuration = `${Math.random() * 0.2 + 0.4}s`;
+                    
+                    wrapper.appendChild(particle);
+                    
+                    // Instant memory disposal loop after completion
+                    setTimeout(() => {
+                        particle.remove();
+                    }, 600);
+                }
+            }
+            </script>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
